@@ -88,7 +88,7 @@ WSGI_APPLICATION = 'CRM_WEBSITE.wsgi.application'
 # }
 DATABASES = {
     'default': {
-        'ENGINE': 'djongo',
+        'ENGINE': 'djongo',  # Patched at startup by common.apps.CommonConfig
         'NAME': 'CRM_WEBSITE',
         'CLIENT': {
             'host': 'mongodb+srv://ad2001:root@cluster-1.y5ihkl4.mongodb.net/',
@@ -128,7 +128,16 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Storage configuration (Django 4.2+)
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Media files
 MEDIA_URL = '/media/'
@@ -163,8 +172,8 @@ CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Strict'
 CSRF_COOKIE_NAME = 'crm_csrftoken'
 
-# Session Security
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# Session Security - Using signed cookies to avoid djongo5 SQL parsing issues
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 

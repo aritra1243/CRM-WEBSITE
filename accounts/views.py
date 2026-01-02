@@ -441,16 +441,19 @@ def login_view(request):
                 else:
                     request.session.set_expiry(86400)  # 24 hours
             
-            # Create login log
-            LoginLog.objects.create(
+            # Create login log using PyMongo directly (bypasses djongo SQL issue)
+            from common.pymongo_utils import pymongo_create
+            pymongo_create(
+                LoginLog,
                 user=user,
                 employee_id=user.employee_id,
                 session_key=request.session.session_key,
                 **client_info
             )
             
-            # Create user session
-            UserSession.objects.create(
+            # Create user session using PyMongo directly
+            pymongo_create(
+                UserSession,
                 user=user,
                 session_key=request.session.session_key,
                 ip_address=client_info['ip_address'],

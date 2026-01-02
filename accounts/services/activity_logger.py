@@ -56,17 +56,21 @@ def log_activity_event(
     category:
         Overrides default category inference if provided.
     """
+    import json
+    from common.pymongo_utils import pymongo_create
 
     payload = metadata.copy() if metadata else {}
     resolved_category = category or EVENT_CATEGORY_MAP.get(event_key, ActivityLog.CATEGORY_GENERAL)
 
-    return ActivityLog.objects.create(
+    # Use pymongo_create to bypass djongo's SQL parser issue with Django 5.x
+    return pymongo_create(
+        ActivityLog,
         event_key=event_key,
         category=resolved_category,
         subject_user=subject_user,
         performed_by=performed_by,
-        metadata={
+        metadata=json.dumps({
             **payload,
             'logged_at': timezone.now().isoformat(),
-        },
+        }),
     )
