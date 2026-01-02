@@ -1,0 +1,566 @@
+﻿<!-- process/templates/process/process_dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Process Dashboard - CRM Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Modal Styles - Matching Writer Style */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s;
+    }
+
+    .modal.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.3s;
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        padding: 20px 30px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .close {
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        line-height: 1;
+    }
+
+    .close:hover {
+        transform: rotate(90deg);
+    }
+
+    .modal-body {
+        padding: 30px;
+        max-height: calc(90vh - 80px);
+        overflow-y: auto;
+        background: #fff;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        font-size: 18px;
+        color: var(--primary);
+    }
+
+    .detail-section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+    }
+
+    .detail-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: var(--primary);
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        color: #333;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-process {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-in-review {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .attachment-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0 0;
+    }
+
+    .attachment-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: white;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s;
+    }
+
+    .attachment-item:hover {
+        background: #f0f0f0;
+        border-color: var(--primary);
+    }
+
+    .attachment-info {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .attachment-icon {
+        margin-right: 12px;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .attachment-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .attachment-name {
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .download-btn:hover {
+        background: var(--secondary);
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .error-message {
+        text-align: center;
+        padding: 40px;
+        color: #d32f2f;
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% now "l, F d, Y" as process_today %}
+{% with welcome_name=process_member_name|default:request.user.get_full_name|default:request.user.email %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Process Dashboard</h1>
+        <p class="dashboard-subtitle">Welcome back, {{ welcome_name }} | {{ process_today }}</p>
+    </div>
+</div>
+{% endwith %}
+
+<div class="stats-grid">
+    <div class="stat-card gradient-primary">
+        <div class="stat-value">{{ total_jobs }}</div>
+        <div class="stat-label">Total Active Jobs (Last 24h)</div>
+    </div>
+    <div class="stat-card gradient-secondary">
+        <div class="stat-value">{{ jobs.paginator.count }}</div>
+        <div class="stat-label">Jobs This Page</div>
+    </div>
+</div>
+
+<div class="table-container">
+    <h3 style="margin-bottom: 1rem; color: var(--text-color);">Process Jobs Assigned to You</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Job ID</th>
+                <th>Topic</th>
+                <th>Word Count</th>
+                <th>Deadline</th>
+                <th>Referencing</th>
+                <th>Allocated At</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td style="font-family: monospace; font-weight: 600; color: var(--primary);">{{ job.system_id }}</td>
+                <td>{{ job.topic|truncatewords:5 }}</td>
+                <td>{{ job.word_count|default:"--" }}</td>
+                <td style="color: #e74c3c;">{{ job.allocation_deadline|date:"d/m/Y"|default:"--" }}</td>
+                <td>{{ job.referencing_style|upper|default:"--" }}</td>
+                <td>{{ job.allocation_time|date:"d/m/Y H:i"|default:"--" }}</td>
+                <td>
+                    {% if job.status == 'process' %}
+                    <span class="status-tag status-in-progress">Process</span>
+                    {% endif %}
+                    {% if job.status == 'in_review' %}
+                    <span class="status-tag status-allocated">In Review</span>
+                    {% endif %}
+                    {% if job.status != 'process' and job.status != 'in_review' %}
+                    <span class="status-tag">{{ job.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-primary view-job-btn" data-job-id="{{ job.system_id }}">View</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" style="text-align:center; padding:2rem;">No jobs assigned in last 24 hours.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if jobs.has_other_pages %}
+<div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem;">
+    {% if jobs.has_previous %}
+    <a href="?page=1" class="btn btn-outline" style="padding: 8px 16px;">First</a>
+    <a href="?page={{ jobs.previous_page_number }}" class="btn btn-outline" style="padding: 8px 16px;">Previous</a>
+    {% endif %}
+    <span style="color: var(--text-color); font-weight: 500;">Page {{ jobs.number }} of {{ jobs.paginator.num_pages
+        }}</span>
+    {% if jobs.has_next %}
+    <a href="?page={{ jobs.next_page_number }}" class="btn btn-outline" style="padding: 8px 16px;">Next</a>
+    <a href="?page={{ jobs.paginator.num_pages }}" class="btn btn-outline" style="padding: 8px 16px;">Last</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Job Details Modal -->
+<div class="modal" id="projectModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Project Details</h2>
+            <span class="close" onclick="closeProjectModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading-spinner">Loading project details...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openProjectModal(systemId) {
+        const modal = document.getElementById('projectModal');
+        const modalBody = document.getElementById('modalBody');
+
+        modal.classList.add('active');
+        modalBody.innerHTML = '<div class="loading-spinner">Loading project details...</div>';
+
+        fetch(`{% url 'process_view_job_json' 'JOB_ID' %}`.replace('JOB_ID', systemId))
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                modalBody.innerHTML = buildModalContent(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                modalBody.innerHTML = `<div class="error-message" style="color: #ff6b6b; text-align: center; padding: 2rem;">
+                    <p style="font-weight: bold; margin-bottom: 0.5rem;">Error loading project details</p>
+                    <p style="font-size: 0.9rem; opacity: 0.8;">${error.message}</p>
+                </div>`;
+            });
+    }
+
+    function closeProjectModal() {
+        document.getElementById('projectModal').classList.remove('active');
+    }
+
+    function buildModalContent(data) {
+        const job = data.job;
+        const attachments = data.attachments || [];
+        const submissions = data.submissions || [];
+        const allocations = data.allocations || [];
+
+        let statusClass = job.status === 'process' ? 'process' : 'in-review';
+        let statusDisplay = job.status === 'process' ? 'Process' : job.status === 'in_review' ? 'In Review' : job.status;
+
+        let html = `
+        <!-- Project Details -->
+        <div class="detail-section">
+            <h3>📋 Project Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Job ID</span>
+                    <span class="detail-value">${job.system_id}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-${statusClass}">${statusDisplay}</span>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Category</span>
+                    <span class="detail-value">${job.category || 'N/A'}</span>
+                </div>
+            </div>
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Topic</span>
+                <span class="detail-value">${job.topic || 'N/A'}</span>
+            </div>
+            <div class="detail-grid" style="margin-top: 15px;">
+                <div class="detail-item">
+                    <span class="detail-label">Word Count</span>
+                    <span class="detail-value">${job.word_count || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Referencing Style</span>
+                    <span class="detail-value">${job.referencing_style ? job.referencing_style.toUpperCase() : 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Writing Style</span>
+                    <span class="detail-value">${job.writing_style || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Software</span>
+                    <span class="detail-value">${job.software || 'N/A'}</span>
+                </div>
+            </div>
+            ${job.instruction ? `
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Instructions</span>
+                <span class="detail-value">${job.instruction}</span>
+            </div>` : ''}
+        </div>
+    `;
+
+        // Attachments Section
+        if (attachments.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>📎 Attachments (${attachments.length})</h3>
+            <ul class="attachment-list">
+        `;
+
+            attachments.forEach(att => {
+                html += `
+                <li class="attachment-item">
+                    <div class="attachment-info">
+                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13 2V9H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <div class="attachment-details">
+                            <span class="attachment-name">${att.original_filename || 'Document'}</span>
+                        </div>
+                    </div>
+                    <div class="attachment-download">
+                        <a href="${att.file}" download class="download-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Download
+                        </a>
+                    </div>
+                </li>
+            `;
+            });
+
+            html += '</ul></div>';
+        }
+
+        // Writer Submissions Section
+        if (submissions.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>📝 Writer Submissions (${submissions.length})</h3>
+            <ul class="attachment-list">
+        `;
+
+            submissions.forEach(sub => {
+                html += `
+                <li class="attachment-item">
+                    <div class="attachment-info">
+                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M14 2v6h6" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <div class="attachment-details">
+                            <span class="attachment-name">${sub.submission_type === 'structure' ? '📋 Structure' : '✍️ Final Copy'}</span>
+                            <span style="color: #666; font-size: 12px;">Submitted: ${formatDate(sub.submitted_at)}</span>
+                        </div>
+                    </div>
+                    <div class="attachment-download">
+                        <a href="${sub.file}" download class="download-btn">Download</a>
+                    </div>
+                </li>
+            `;
+            });
+
+            html += '</ul></div>';
+        }
+
+        // Allocations Section
+        if (allocations.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>👤 Allocations (${allocations.length})</h3>
+            <div class="detail-grid">
+        `;
+
+            allocations.forEach(alloc => {
+                html += `
+                <div class="detail-item">
+                    <span class="detail-label">${alloc.allocation_type.toUpperCase()}</span>
+                    <span class="detail-value">${alloc.allocated_user || 'Unknown'}</span>
+                    <span style="color: #666; font-size: 12px;">Allocated: ${formatDate(alloc.allocated_at)}</span>
+                </div>
+            `;
+            });
+
+            html += '</div></div>';
+        }
+
+        return html;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '--';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        const viewJobButtons = document.querySelectorAll('.view-job-btn');
+        viewJobButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const jobId = this.getAttribute('data-job-id');
+                openProjectModal(jobId);
+            });
+        });
+    });
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+        const modal = document.getElementById('projectModal');
+        if (event.target == modal) {
+            closeProjectModal();
+        }
+    }
+</script>
+
+<style>
+    .stat-card {
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .stat-card:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .data-table tbody tr {
+        animation: fadeIn 0.3s ease-out;
+    }
+</style>
+{% endblock %}

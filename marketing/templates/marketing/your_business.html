@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CRM Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="dashboard-title">{{ page_title }}</h1>
+            <p class="dashboard-subtitle">Track your business performance this month</p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <!-- Month Navigation -->
+            <div
+                style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 0.5rem;">
+                <a href="?month={{ prev_month }}&year={{ prev_year }}" class="btn btn-sm"
+                    style="background: transparent; border: none; padding: 0.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </a>
+                <span style="font-weight: 600; min-width: 140px; text-align: center;">{{ month_name }} {{ year }}</span>
+                <a href="?month={{ next_month }}&year={{ next_year }}" class="btn btn-sm"
+                    style="background: transparent; border: none; padding: 0.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </a>
+            </div>
+            <a href="{% url 'marketing_dashboard' %}" class="btn btn-outline">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-cards"
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Target Amount Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Target Amount</p>
+                <h2 style="font-size: 2rem; font-weight: 700; color: var(--text-color); margin: 0;">
+                    ₹{{target_amount|floatformat:0|default:"0" }}</h2>
+                <p style="font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 0.5rem;">Monthly Target
+                </p>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" />
+                    <circle cx="12" cy="12" r="6" stroke="white" stroke-width="2" />
+                    <circle cx="12" cy="12" r="2" fill="white" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(99, 102, 241, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+
+    <!-- Completed Business Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="flex: 1;">
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Completed Business</p>
+                <h2 style="font-size: 2rem; font-weight: 700; color: #4ade80; margin: 0;">
+                    ₹{{completed_business|floatformat:0|default:"0" }}</h2>
+                <!-- Progress Bar -->
+                <div style="margin-top: 0.75rem;">
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; overflow: hidden;">
+                        <div
+                            style="background: linear-gradient(90deg, #10b981, #4ade80); height: 100%; width: {{ progress_percentage }}%; transition: width 0.5s ease;">
+                        </div>
+                    </div>
+                    <p style="font-size: 0.7rem; color: var(--text-color-secondary); margin-top: 0.25rem;">
+                        {{progress_percentage|floatformat:1 }}% of target</p>
+                </div>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #10b981, #34d399); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(16, 185, 129, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+
+    <!-- Total Money In Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total Money In</p>
+                <h2 style="font-size: 2rem; font-weight: 700; color: #fb923c; margin: 0;">
+                    ₹{{total_money_in|floatformat:0|default:"0" }}</h2>
+                <p style="font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 0.5rem;">Payments Recorded
+                </p>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #f97316, #fb923c); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 1V23M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(249, 115, 22, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Section -->
+<div class="card" style="border-radius: 16px; overflow: hidden;">
+    <div class="card-header"
+        style="padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Business Calendar</h3>
+            <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-color-secondary);">This calendar
+                automatically tracks your business performance</p>
+        </div>
+        <div style="display: flex; gap: 1rem; font-size: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="width: 12px; height: 12px; background: #60a5fa; border-radius: 3px;"></span>
+                <span>Submitted</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="width: 12px; height: 12px; background: #4ade80; border-radius: 3px;"></span>
+                <span>Completed</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="width: 12px; height: 12px; background: #fb923c; border-radius: 3px;"></span>
+                <span>Money In</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 1.5rem;">
+        <!-- Calendar Grid -->
+        <div class="calendar-grid">
+            <!-- Header Row -->
+            <div class="calendar-header"
+                style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 0.75rem;">
+                {% for day_name in weekday_headers %}
+                <div
+                    style="text-align: center; font-weight: 600; font-size: 0.75rem; color: var(--text-color-secondary); padding: 0.5rem;">
+                    {{ day_name }}</div>
+                {% endfor %}
+            </div>
+
+            <!-- Calendar Weeks -->
+            {% for week in calendar_weeks %}
+            <div class="calendar-row"
+                style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 0.5rem;">
+                {% for day_cell in week %}
+                {% if day_cell.day == 0 %}
+                <div class="calendar-cell empty" style="min-height: 90px;"></div>
+                {% else %}
+                <div class="calendar-cell {% if day_cell.is_today %}today{% endif %} {% if day_cell.has_activity %}has-activity{% endif %}"
+                    style="min-height: 90px; background: {% if day_cell.is_today %}rgba(99, 102, 241, 0.15){% elif day_cell.has_activity %}rgba(255,255,255,0.03){% else %}rgba(255,255,255,0.01){% endif %}; border: 1px solid {% if day_cell.is_today %}rgba(99, 102, 241, 0.4){% else %}rgba(255,255,255,0.05){% endif %}; border-radius: 10px; padding: 0.5rem; transition: all 0.2s ease;">
+                    <div
+                        style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem; {% if day_cell.is_today %}color: #818cf8;{% endif %}">
+                        {{ day_cell.day }}</div>
+                    {% if day_cell.has_activity %}
+                    <div style="font-size: 0.65rem; display: flex; flex-direction: column; gap: 2px;">
+                        {% if day_cell.data.submitted > 0 %}
+                        <div class="metric-item"
+                            style="display: flex; align-items: center; gap: 4px; position: relative;">
+                            <span
+                                style="width: 6px; height: 6px; background: #60a5fa; border-radius: 2px; flex-shrink: 0;"></span>
+                            <span class="metric-value"
+                                style="color: #60a5fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;"
+                                data-tooltip="{% for detail in day_cell.data.submitted_details %}{{ detail.customer }}: ₹{{ detail.amount|floatformat:0 }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}">₹{{day_cell.data.submitted|floatformat:0}}</span>
+                        </div>
+                        {% endif %}
+                        {% if day_cell.data.completed > 0 %}
+                        <div class="metric-item"
+                            style="display: flex; align-items: center; gap: 4px; position: relative;">
+                            <span
+                                style="width: 6px; height: 6px; background: #4ade80; border-radius: 2px; flex-shrink: 0;"></span>
+                            <span class="metric-value"
+                                style="color: #4ade80; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;"
+                                data-tooltip="{% for detail in day_cell.data.completed_details %}{{ detail.customer }}: ₹{{ detail.amount|floatformat:0 }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}">₹{{day_cell.data.completed|floatformat:0 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if day_cell.data.money_in > 0 %}
+                        <div class="metric-item"
+                            style="display: flex; align-items: center; gap: 4px; position: relative;">
+                            <span
+                                style="width: 6px; height: 6px; background: #fb923c; border-radius: 2px; flex-shrink: 0;"></span>
+                            <span class="metric-value"
+                                style="color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;"
+                                data-tooltip="{% for detail in day_cell.data.money_in_details %}{{ detail.customer }}: ₹{{ detail.amount|floatformat:0 }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}">₹{{day_cell.data.money_in|floatformat:0}}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-cell:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .calendar-cell.has-activity {
+        cursor: pointer;
+    }
+
+    .metric-value[data-tooltip] {
+        cursor: pointer;
+    }
+
+    /* Custom tooltip container */
+    .custom-tooltip {
+        position: fixed;
+        background: rgba(15, 23, 42, 0.95);
+        color: #fff;
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        white-space: pre-line;
+        z-index: 10000;
+        min-width: 140px;
+        max-width: 250px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        line-height: 1.5;
+        pointer-events: none;
+        animation: tooltipShow 0.15s ease-out;
+    }
+
+    @keyframes tooltipShow {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .calendar-cell {
+            min-height: 70px !important;
+            padding: 0.35rem !important;
+        }
+
+        .calendar-cell>div:first-child {
+            font-size: 0.75rem !important;
+        }
+
+        .kpi-cards {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let tooltip = null;
+
+        // Create tooltip element
+        function createTooltip() {
+            tooltip = document.createElement('div');
+            tooltip.className = 'custom-tooltip';
+            tooltip.style.display = 'none';
+            document.body.appendChild(tooltip);
+        }
+
+        // Show tooltip
+        function showTooltip(e) {
+            const text = e.target.getAttribute('data-tooltip');
+            if (!text || text.trim() === '') return;
+
+            if (!tooltip) createTooltip();
+
+            // Replace newline character entity with actual newline
+            tooltip.textContent = text.replace(/&#10;/g, '\n');
+            tooltip.style.display = 'block';
+
+            // Position tooltip above the element
+            const rect = e.target.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+            let top = rect.top - tooltipRect.height - 8;
+
+            // Keep tooltip within viewport
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            if (top < 10) {
+                top = rect.bottom + 8; // Show below if not enough space above
+            }
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        }
+
+        // Hide tooltip
+        function hideTooltip() {
+            if (tooltip) {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        // Attach event listeners to all metric values
+        document.querySelectorAll('.metric-value[data-tooltip]').forEach(function (el) {
+            el.addEventListener('mouseenter', showTooltip);
+            el.addEventListener('mouseleave', hideTooltip);
+        });
+    });
+</script>
+{% endblock %}

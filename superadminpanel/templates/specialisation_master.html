@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Specialisation Master - CRM Portal{% endblock %}
+{% block extra_css %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .specialisation-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <!-- Back Button -->
+    <div style="margin-bottom: var(--spacing-lg);">
+        <a href="{% url 'superadmin:master_input' %}" class="btn btn-outline">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Master Input
+        </a>
+    </div>
+
+    <!-- Page Header -->
+    <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xl);">
+        <div>
+            <h1 class="dashboard-title">Specialisation Master</h1>
+            <p class="dashboard-subtitle">Manage academic specialisations and fields</p>
+        </div>
+        <button onclick="showCreateSpecialisationModal()" class="btn btn-primary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create Specialisation
+        </button>
+    </div>
+
+    <!-- Specialisation History -->
+    <div class="card mt-4">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 class="card-title">Specialisation History</h3>
+                <p class="dashboard-subtitle">All created specialisations ({{ total_specialisations }})</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" id="specialisationSearchInput" class="form-control" placeholder="Search specialisations..." style="width: 300px;">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-container table-scroll-lock">
+                {% if specialisations %}
+                <table class="data-table" id="specialisationsTable">
+                    <thead>
+                        <tr>
+                            <th>SL. No</th>
+                            <th>Specialisation Name</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for specialisation in specialisations %}
+                        <tr>
+                            <!-- Serial No -->
+                            <td>{{ forloop.counter }}</td>
+                            
+                            <!-- Specialisation Name -->
+                            <td style="font-weight: 600;" data-column="name">
+                                <span class="status-tag" style="background-color: rgba(var(--primary), 0.15); color: var(--secondary);">
+                                    {{ specialisation.specialisation_name }}
+                                </span>
+                            </td>
+                            
+                            <!-- Created Date -->
+                            <td>{{ specialisation.created_at|date:"M d, Y" }}</td>
+                            
+                            <!-- Actions -->
+                            <td>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <!-- Edit Button -->
+                                    <button type="button"
+                                            class="btn btn-outline btn-sm"
+                                            data-id="{{ specialisation.id }}"
+                                            data-action="{% url 'superadmin:edit_specialisation' specialisation.id %}"
+                                            data-name="{{ specialisation.specialisation_name }}"
+                                            onclick="showEditSpecialisationModal(this)">
+                                        Edit
+                                    </button>
+                                    
+                                    <!-- Delete Button -->
+                                    <form method="POST"
+                                          action="{% url 'superadmin:delete_specialisation' specialisation.id %}"
+                                          onsubmit="return confirm('Are you sure you want to delete this specialisation?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 7l-.867 12.142A2 2 
+                                                      0 0116.138 21H7.862a2 2 0 
+                                                      01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 
+                                                      1 0 00-1-1h-4a1 1 0 00-1 
+                                                      1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <!-- EMPTY STATE -->
+                <div style="text-align: center; padding: 2rem; opacity: 0.7;">
+                    <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity: 0.3;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <p style="font-size: 16px;">No specialisations created yet</p>
+                    <p style="font-size: 14px; opacity: 0.6; margin-top: 6px;">
+                        Click "Create Specialisation" to add your first one
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Specialisation Modal -->
+<div class="modal-overlay" id="createSpecialisationModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="specialisationModalTitle">Create Specialisation</h2>
+            <button type="button" class="modal-close" onclick="closeModal('createSpecialisationModal')">&times;</button>
+        </div>
+        
+        <form method="POST" action="{% url 'superadmin:create_specialisation' %}" id="specialisationForm">
+            {% csrf_token %}
+            
+            <!-- Specialisation Name -->
+            <div class="form-group">
+                <label for="specialisation_name" class="form-label required">Specialisation Name</label>
+                <input type="text" 
+                       id="specialisation_name" 
+                       name="specialisation_name" 
+                       class="form-control" 
+                       placeholder="e.g., Computer Science, Business Administration, Mechanical Engineering"
+                       required>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline" onclick="closeModal('createSpecialisationModal')">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="specialisationSubmitBtn">
+                    Create Specialisation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const specialisationModalState = {
+        modalId: 'createSpecialisationModal',
+        createAction: '{% url "superadmin:create_specialisation" %}',
+        form: null,
+        title: null,
+        submitBtn: null,
+    };
+
+    function resetSpecialisationForm() {
+        if (!specialisationModalState.form) return;
+        specialisationModalState.form.reset();
+        specialisationModalState.form.action = specialisationModalState.createAction;
+    }
+
+    function showCreateSpecialisationModal() {
+        resetSpecialisationForm();
+        if (specialisationModalState.title) {
+            specialisationModalState.title.textContent = 'Create Specialisation';
+        }
+        if (specialisationModalState.submitBtn) {
+            specialisationModalState.submitBtn.textContent = 'Create Specialisation';
+        }
+        openModal(specialisationModalState.modalId);
+    }
+
+    function showEditSpecialisationModal(button) {
+        if (!specialisationModalState.form || !button) return;
+        
+        resetSpecialisationForm();
+        
+        if (specialisationModalState.title) {
+            specialisationModalState.title.textContent = 'Edit Specialisation';
+        }
+        if (specialisationModalState.submitBtn) {
+            specialisationModalState.submitBtn.textContent = 'Update Specialisation';
+        }
+        
+        specialisationModalState.form.action = button.dataset.action || specialisationModalState.createAction;
+        
+        document.getElementById('specialisation_name').value = button.dataset.name || '';
+        
+        openModal(specialisationModalState.modalId);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        specialisationModalState.form = document.getElementById('specialisationForm');
+        specialisationModalState.title = document.getElementById('specialisationModalTitle');
+        specialisationModalState.submitBtn = document.getElementById('specialisationSubmitBtn');
+    });
+
+    // Search functionality
+    document.getElementById("specialisationSearchInput").addEventListener("keyup", function () {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll("#specialisationsTable tbody tr");
+        rows.forEach(row => {
+            let name = row.querySelector('[data-column="name"]').innerText.toLowerCase();
+            row.style.display = name.includes(filter) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

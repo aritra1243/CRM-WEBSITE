@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CRM Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="dashboard-title">{{ page_title }}</h1>
+            <p class="dashboard-subtitle">View all recorded customer payments</p>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <a href="{% url 'payment_entry' %}" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                New Payment
+            </a>
+            <a href="{% url 'marketing_dashboard' %}" class="btn btn-outline">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-cards"
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Total Payments Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total Payments</p>
+                <h2 style="font-size: 2.5rem; font-weight: 700; color: var(--text-color); margin: 0;">{{total_payments|default:0 }}</h2>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M9 5H7C6.46957 5 5.96086 5.21071 5.58579 5.58579C5.21071 5.96086 5 6.46957 5 7V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V7C19 6.46957 18.7893 5.96086 18.4142 5.58579C18.0391 5.21071 17.5304 5 17 5H15M9 5C9 5.53043 9.21071 6.03914 9.58579 6.41421C9.96086 6.78929 10.4696 7 11 7H13C13.5304 7 14.0391 6.78929 14.4142 6.41421C14.7893 6.03914 15 5.53043 15 5M9 5C9 4.46957 9.21071 3.96086 9.58579 3.58579C9.96086 3.21071 10.4696 3 11 3H13C13.5304 3 14.0391 3.21071 14.4142 3.58579C14.7893 3.96086 15 4.46957 15 5M12 12H15M12 16H15M9 12H9.01M9 16H9.01"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(99, 102, 241, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+
+    <!-- Total Amount Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total Amount</p>
+                <h2 style="font-size: 2.5rem; font-weight: 700; color: #4ade80; margin: 0;">₹{{total_amount|floatformat:2|default:"0.00" }}</h2>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #10b981, #34d399); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 1V23M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(16, 185, 129, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+
+    <!-- Unique Customers Card -->
+    <div class="kpi-card"
+        style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p
+                    style="font-size: 0.875rem; color: var(--text-color-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Unique Customers</p>
+                <h2 style="font-size: 2.5rem; font-weight: 700; color: var(--text-color); margin: 0;">{{unique_customers|default:0 }}</h2>
+            </div>
+            <div
+                style="width: 60px; height: 60px; background: linear-gradient(135deg, #f97316, #fb923c); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88M13 7C13 9.20914 11.2091 11 9 11C6.79086 11 5 9.20914 5 7C5 4.79086 6.79086 3 9 3C11.2091 3 13 4.79086 13 7Z"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+        <div
+            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(249, 115, 22, 0.1); border-radius: 50%;">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Payment ID</th>
+                        <th style="width: 25%;">Customer</th>
+                        <th style="width: 15%;">Amount (₹)</th>
+                        <th style="width: 15%;">Bank Name</th>
+                        <th style="width: 15%;">Entry Date & Time (IST)</th>
+                        <th style="width: 10%;">Recorded By</th>
+                        <th style="width: 5%;">Attachment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in page_obj %}
+                    <tr>
+                        <td>
+                            <code style="color: var(--primary); font-weight: 600;">{{ payment.payment_id }}</code>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">{{ payment.customer.customer_name }}</div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;">{{ payment.customer.customer_id }}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: #4ade80;">₹{{ payment.amount_display|floatformat:2 }}
+                            </div>
+                        </td>
+                        <td>{{ payment.bank_name }}</td>
+                        <td>
+                            <div style="font-weight: 500;">{{ payment.payment_date|date:"d/m/Y" }}</div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;">{{ payment.payment_date|date:"h:i A" }}</div>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                {% if payment.created_by.profile_image %}
+                                <img src="{{ payment.created_by.profile_image.url }}" alt=""
+                                    style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                                {% else %}
+                                <div
+                                    style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">
+                                    {{ payment.created_by.get_full_name|slice:":1"|default:"U" }}
+                                </div>
+                                {% endif %}
+                                <span>{{ payment.created_by.get_full_name|default:"Unknown" }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if payment.receipt %}
+                            <a href="{{ payment.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-primary"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg" style="margin-right: 4px;">
+                                    <path
+                                        d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                                View
+                            </a>
+                            {% else %}
+                            <span style="opacity: 0.5; font-size: 0.875rem;">No Receipt</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem;">
+                            <div style="opacity: 0.5;">No payment records found</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer" style="padding: 1rem;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li class="page-item"><a
+                            class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next</span>
+                        </li>
+                        {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+        /* Force scroll on small screens */
+    }
+
+    .data-table th {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-color-secondary);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        color: var(--text-color);
+        font-size: 0.95rem;
+        vertical-align: middle;
+    }
+
+    .data-table tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Pagination Styles */
+    .page-link {
+        background-color: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+    }
+
+    .page-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .page-item.disabled .page-link {
+        background-color: transparent;
+        border-color: rgba(255, 255, 255, 0.05);
+        color: var(--text-color-muted);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,475 @@
+<!-- writer/templates/writer/writer_dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Writer Dashboard - CRM Portal{% endblock %}
+{% block body_class %}theme-writer-2{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+    <h1 class="dashboard-title">Writer Dashboard</h1>
+    <p class="dashboard-subtitle">Manage your writing projects and tasks</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card" style="background: linear-gradient(135deg, #8B7DD8 0%, #7A6BC0 100%);">
+        <div class="stat-value">{{ total_projects }}</div>
+        <div class="stat-label">Total Projects</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #FF99CC 0%, #C4A0E8 100%);">
+        <div class="stat-value">{{ pending_tasks }}</div>
+        <div class="stat-label">Pending Tasks</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #9D90DC 0%, #8677C8 100%);">
+        <div class="stat-value">{{ in_progress }}</div>
+        <div class="stat-label">In Progress</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #C4A0E8 0%, #A88FDB 100%);">
+        <div class="stat-value">{{ issues }}</div>
+        <div class="stat-label">Issues</div>
+    </div>
+</div>
+
+<!-- Card Grid -->
+<div class="card-grid">
+    <!-- My Tasks Card -->
+    <div class="card" style="grid-column: span 10;">
+        <div class="card-header">
+            <h2 class="card-title">My Tasks - Today's Allocated (Last 24 Hours)</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Topic</th>
+                            <th>Word Count</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in recent_projects %}
+                        <tr>
+                            <td>
+                                <span style="font-weight: 600; color: var(--primary);">
+                                    {{ project.system_id }}
+                                </span>
+                            </td>
+                            <td>
+                                <span style="max-width: 250px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.topic }}">
+                                    {{ project.topic|default:"N/A" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span style="font-weight: 600;">
+                                    {{ project.word_count|default:"N/A" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span>
+                                    {{ project.deadline|date:"d M Y, h:i A"|default:"N/A" }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if project.status == 'pending' %}
+                                <span class="status-tag status-pending">Pending</span>
+                                {% elif project.status == 'in_progress' %}
+                                <span class="status-tag status-in-progress">In Progress</span>
+                                {% elif project.status == 'completed' %}
+                                <span class="status-tag status-completed">Completed</span>
+                                {% elif project.status == 'hold' %}
+                                <span class="status-tag status-hold">Hold</span>
+                                {% elif project.status == 'Review' %}
+                                <span class="status-tag status-allocated">Review</span>
+                                {% elif project.status == 'allocated' %}
+                                <span class="status-tag status-allocated">Allocated</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button onclick="openProjectModal('{{ project.system_id }}')" class="btn btn-primary" style="padding: 6px 16px; font-size: 13px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 4px;">
+                                        <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center" style="padding: 2rem; opacity: 0.6;">
+                                <div style="opacity: 0.6;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 1rem; opacity: 0.3;">
+                                        <path d="M22 19C22 19.5304 21.7893 20.0391 21.4142 20.4142C21.0391 20.7893 20.5304 21 20 21H4C3.46957 21 2.96086 20.7893 2.58579 20.4142C2.21071 20.0391 2 19.5304 2 19V5C2 4.46957 2.21071 3.96086 2.58579 3.58579C2.96086 3.21071 3.46957 3 4 3H9L11 6H20C20.5304 6 21.0391 6.21071 21.4142 6.58579C21.7893 6.96086 22 7.46957 22 8V19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p style="font-size: 18px; font-weight: 600; margin-bottom: 0.5rem;">No Tasks Allocated Today</p>
+                                    <p style="font-size: 14px;">No new tasks have been allocated in the last 24 hours.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="{% url 'all_projects' %}" class="btn btn-outline">
+                    View All Projects
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Project Status Breakdown Card -->
+    <!-- <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Project Status Breakdown</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 1rem;"> -->
+                <!-- Completed -->
+                <!-- <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 14px; font-weight: 500;">Completed</span>
+                        <span style="font-size: 14px; font-weight: 600; color: #4CAF50;">{{ completed }}</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background-color: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div style="width: {{ progress_percent.completed }}%; height: 100%; background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%); transition: width 0.3s ease;"></div>
+                    </div>
+                </div> -->
+                
+                <!-- In Progress -->
+                <!-- <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 14px; font-weight: 500;">In Progress</span>
+                        <span style="font-size: 14px; font-weight: 600; color: #2196F3;">{{ in_progress }}</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background-color: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div style="width: {{ progress_percent.in_progress }}%; height: 100%; background: linear-gradient(90deg, #2196F3 0%, #64B5F6 100%); transition: width 0.3s ease;"></div>
+                    </div>
+                </div> -->
+                
+                <!-- Hold -->
+                <!-- <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 14px; font-weight: 500;">Hold</span>
+                        <span style="font-size: 14px; font-weight: 600; color: #FF9800;">{{ hold }}</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background-color: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div style="width: {{ progress_percent.hold }}%; height: 100%; background: linear-gradient(90deg, #FF9800 0%, #FFB74D 100%); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                 -->
+                <!-- Pending -->
+                <!-- <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 14px; font-weight: 500;">Pending</span>
+                        <span style="font-size: 14px; font-weight: 600; color: #FFC107;">{{ pending_tasks }}</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background-color: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div style="width: {{ progress_percent.pending }}%; height: 100%; background: linear-gradient(90deg, #FFC107 0%, #FFD54F 100%); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 14px; font-weight: 500;">Total Projects</span>
+                    <span style="font-size: 20px; font-weight: 700; color: var(--primary);">{{ total_projects }}</span>
+                </div>
+            </div>
+        </div>
+    </div> -->
+</div>
+
+<!-- Project Detail Modal (Same as all_projects.html) -->
+<div id="projectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Project Details</h2>
+            <span class="close" onclick="closeProjectModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .stats-grid, .card-grid {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px) scale(1.02);
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: rgba(183, 153, 255, 0.1);
+    }
+    
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .modal-content {
+        background-color: #fff;
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 1000px;
+        max-height: 90vh;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.3s;
+    }
+    
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .modal-header {
+        padding: 20px 30px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .modal-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+    }
+    
+    .close {
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        line-height: 1;
+    }
+    
+    .close:hover {
+        transform: rotate(90deg);
+    }
+    
+    .modal-body {
+        padding: 30px;
+        max-height: calc(90vh - 80px);
+        overflow-y: auto;
+    }
+    
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        font-size: 18px;
+        color: var(--primary);
+    }
+    
+    .detail-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+    }
+    
+    .detail-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: var(--primary);
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .detail-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .detail-value {
+        color: #333;
+        font-size: 15px;
+        font-weight: 500;
+    }
+</style>
+
+<script>
+function openProjectModal(systemId) {
+    const modal = document.getElementById('projectModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    modal.style.display = 'block';
+    modalBody.innerHTML = '<div class="loading-spinner">Loading project details...</div>';
+    
+    fetch(`/writer/project-detail-ajax/${systemId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                modalBody.innerHTML = buildModalContent(data);
+            } else {
+                modalBody.innerHTML = '<div class="error-message">Error loading project details.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            modalBody.innerHTML = '<div class="error-message">Error loading project details.</div>';
+        });
+}
+
+function closeProjectModal() {
+    document.getElementById('projectModal').style.display = 'none';
+}
+
+function buildModalContent(data) {
+    const job = data.job;
+    const allocation = data.allocation;
+    const attachments = data.attachments;
+    
+    let html = `
+        <div class="detail-section">
+            <h3>📋 Job Information</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Job ID</span>
+                    <span class="detail-value">${job.system_id}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-${job.status.toLowerCase().replace('_', '-')}">${job.status_display}</span>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Category</span>
+                    <span class="detail-value">${job.category || 'N/A'}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <h3>📝 Project Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Topic</span>
+                    <span class="detail-value">${job.topic || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Word Count</span>
+                    <span class="detail-value">${job.word_count || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Referencing Style</span>
+                    <span class="detail-value">${job.referencing_style_display || 'N/A'}</span>
+                </div>
+            </div>
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Instructions</span>
+                <span class="detail-value">${job.instruction || 'N/A'}</span>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <h3>👤 Allocation Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Start Date</span>
+                    <span class="detail-value">${allocation.start_date}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">End Date</span>
+                    <span class="detail-value">${allocation.end_date}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (attachments && attachments.length > 0) {
+        html += `
+        <div class="detail-section">
+            <h3>📎 Attachments (${attachments.length})</h3>
+            <ul class="attachment-list" style="list-style: none; padding: 0;">
+        `;
+        
+        attachments.forEach(attachment => {
+            html += `
+                <li style="padding: 10px; background: white; margin-bottom: 10px; border-radius: 6px;">
+                    <a href="${attachment.file_url}" download style="text-decoration: none; color: var(--primary);">
+                        📄 ${attachment.original_filename} (${attachment.file_size})
+                    </a>
+                </li>
+            `;
+        });
+        
+        html += `</ul></div>`;
+    }
+    
+    return html;
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('projectModal');
+    if (event.target == modal) {
+        closeProjectModal();
+    }
+}
+</script>
+{% endblock %}

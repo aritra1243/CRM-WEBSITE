@@ -1,0 +1,1026 @@
+<!-- process/templates/process/process_tasks.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Tasks - Process{% endblock %}
+{% block extra_css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+    /* Shared Modal Styles from Dashboard */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s;
+    }
+
+    .modal.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.3s;
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-lg {
+        max-width: 800px;
+    }
+
+    .modal-header {
+        padding: 20px 30px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .close {
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        line-height: 1;
+    }
+
+    .close:hover {
+        transform: rotate(90deg);
+    }
+
+    .modal-body {
+        padding: 30px;
+        max-height: calc(90vh - 80px);
+        overflow-y: auto;
+        background: #fff;
+    }
+
+    .modal-footer {
+        padding: 20px 30px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        font-size: 18px;
+        color: var(--primary);
+    }
+
+    /* Detail Sections */
+    .detail-section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+    }
+
+    .detail-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: var(--primary);
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        color: #333;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-process {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-in-review {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .status-completed {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    /* Attachment List Styles */
+    .attachment-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0 0;
+    }
+
+    .attachment-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: white;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s;
+    }
+
+    .attachment-item:hover {
+        background: #f0f0f0;
+        border-color: var(--primary);
+    }
+
+    .attachment-info {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .attachment-icon {
+        margin-right: 12px;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .attachment-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .attachment-name {
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .download-btn:hover {
+        background: var(--secondary);
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    /* Process Task Specific Styles */
+    .data-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: rgba(183, 153, 255, 0.08);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .submission-row {
+        background: #f8f9fa !important;
+    }
+
+    .submission-container {
+        padding: 20px;
+    }
+
+    .submission-blocks {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .submission-block {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        background: white;
+    }
+
+    .submission-block.block-upload {
+        border-color: var(--primary);
+        background: linear-gradient(135deg, rgba(78, 205, 196, 0.05), rgba(183, 153, 255, 0.05));
+    }
+
+    .block-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .block-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: var(--primary);
+    }
+
+    .block-status {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #4caf50;
+        color: white;
+    }
+
+    .block-status.pending {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .block-status.loading {
+        background: #2196f3;
+        color: white;
+    }
+
+    .block-content {
+        margin-bottom: 15px;
+    }
+
+    .block-description {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    .block-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .status-allocated {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-in-progress {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .status-completed {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .text-danger {
+        color: #d32f2f;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .file-list {
+        margin-top: 15px;
+        text-align: left;
+    }
+
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+
+    .file-item a:not(.download-btn) {
+        color: #333;
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .file-item a:not(.download-btn):hover {
+        color: var(--primary);
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" style="display: none;">
+<div class="dashboard-header">
+    <h1 class="dashboard-title">Process Tasks</h1>
+    <p class="dashboard-subtitle">View and manage all your assigned process jobs</p>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: var(--spacing-lg);">
+    <div class="card-body">
+        <form method="GET" class="form-row" style="align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" value="{{ search_query }}" class="form-control"
+                    placeholder="Search by Job ID or Topic...">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control form-select">
+                    <option value="">All Status</option>
+                    {% for value, label in STATUS_CHOICES %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="btn-group" style="margin-bottom: 0;">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" />
+                        <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    Filter
+                </button>
+                <a href="{% url 'process_tasks' %}" class="btn btn-outline">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tasks Table -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Tasks List ({{ projects|length }})</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>JOB ID</th>
+                        <th>TOPIC</th>
+                        <th>WORD COUNT</th>
+                        <th>START DATE</th>
+                        <th>END DATE</th>
+                        <th>REFERENCING</th>
+                        <th>STATUS</th>
+                        <th>ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr id="task-row-{{ project.system_id }}">
+                        <td><span style="font-weight: 600; color: var(--primary);">{{ project.system_id }}</span></td>
+                        <td><span
+                                style="max-width: 300px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                title="{{ project.topic }}">{{ project.topic|default:"N/A"|truncatewords:8 }}</span>
+                        </td>
+                        <td><span style="font-weight: 600;">{{ project.word_count|default:"N/A" }}</span></td>
+                        <td>{{ project.start_date|date:"d M Y, h:i A"|default:"N/A" }}</td>
+                        <td>{{ project.end_date|date:"d M Y, h:i A"|default:"N/A" }}</td>
+                        <td><span style="text-transform: uppercase; font-weight: 600; color: var(--secondary);">{{
+                                project.referencing_style|default:"N/A" }}</span></td>
+                        <td>
+                            {% if project.status == 'process' %}
+                            <span class="status-tag status-allocated">PROCESS</span>
+                            {% elif project.status == 'in_review' %}
+                            <span class="status-tag status-in-progress">IN REVIEW</span>
+                            {% elif project.status == 'completed' %}
+                            <span class="status-tag status-completed">COMPLETED</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button onclick="openProjectModal('{{ project.system_id }}')"
+                                    class="btn btn-outline btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z"
+                                            stroke="currentColor" stroke-width="2" />
+                                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                                    </svg>
+                                    View
+                                </button>
+                                {% if project.status == 'process' %}
+                                <button onclick="selectTask('{{ project.system_id }}', event)"
+                                    class="btn btn-sm btn-primary" id="select-btn-{{ project.system_id }}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" />
+                                        <path
+                                            d="M21 12V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H16"
+                                            stroke="currentColor" stroke-width="2" />
+                                    </svg>
+                                    Select
+                                </button>
+                                {% elif project.status == 'in_review' %}
+                                <button onclick="toggleSubmissionBlocks('{{ project.system_id }}')"
+                                    class="btn btn-sm btn-secondary" id="work-btn-{{ project.system_id }}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                    Work
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm" disabled
+                                    style="background: #ccc; color: #666;">Completed</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+
+                    {% if project.status == 'in_review' %}
+                    <tr class="submission-row" id="submission-row-{{ project.system_id }}" style="display: none;">
+                        <td colspan="8">
+                            <div class="submission-container">
+                                <div class="submission-blocks">
+                                    <!-- Block 1: Writer Structure -->
+                                    <div class="submission-block">
+                                        <div class="block-header">
+                                            <h4>Block 1 (Writer Structure)</h4>
+                                            <span class="block-status"
+                                                id="structure-status-{{ project.system_id }}">Loading...</span>
+                                        </div>
+                                        <div class="block-content">
+                                            <p class="block-description">Writer's structure submission - Download only
+                                            </p>
+                                            <div id="structure-files-{{ project.system_id }}" class="file-list"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Block 2: Writer Final Copy -->
+                                    <div class="submission-block">
+                                        <div class="block-header">
+                                            <h4>Block 2 (Writer Final Copy)</h4>
+                                            <span class="block-status"
+                                                id="final-status-{{ project.system_id }}">Loading...</span>
+                                        </div>
+                                        <div class="block-content">
+                                            <p class="block-description">Writer's final copy submission - Download only
+                                            </p>
+                                            <div id="final-files-{{ project.system_id }}" class="file-list"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Block 3: Process Upload -->
+                                    <div class="submission-block block-upload">
+                                        <div class="block-header">
+                                            <h4>Block 3 (Process Upload)</h4>
+                                            <span class="block-status pending">Upload Required</span>
+                                        </div>
+                                        <div class="block-content">
+                                            <p class="block-description">Upload your processed file to complete this
+                                                task</p>
+                                            <div class="block-actions">
+                                                <button onclick="openProcessUploadModal('{{ project.system_id }}')"
+                                                    class="btn btn-primary">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                        <path
+                                                            d="M21 15V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V15M17 8L12 3M12 3L7 8M12 3V15"
+                                                            stroke="currentColor" stroke-width="2"
+                                                            stroke-linecap="round" />
+                                                    </svg>
+                                                    Upload Process File
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 3rem;">
+                            <div style="opacity: 0.6;">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none"
+                                    style="margin-bottom: 1rem; opacity: 0.3;">
+                                    <path
+                                        d="M22 19C22 20.1 21.1 21 20 21H4C2.9 21 2 20.1 2 19V5C2 3.9 2.9 3 4 3H9L11 6H20C21.1 6 22 6.9 22 8V19Z"
+                                        stroke="currentColor" stroke-width="2" />
+                                </svg>
+                                <p style="font-size: 18px; font-weight: 600;">No Tasks Found</p>
+                                <p style="font-size: 14px;">You don't have any tasks {% if status_filter %}with this
+                                    status{% endif %} yet.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Process Upload Modal -->
+<div id="processUploadModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2>Upload Process File</h2>
+            <span class="close" onclick="closeProcessUploadModal()">&times;</span>
+        </div>
+        <form id="processUploadForm" onsubmit="submitProcessFile(event); return false;">
+            <div class="modal-body">
+                <input type="hidden" id="process-system-id" name="system_id">
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #333; font-weight: 600;">Notes (Optional)</label>
+                    <textarea id="process-notes" name="notes" class="form-control" rows="4"
+                        placeholder="Enter any notes about your processed file..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #333; font-weight: 600;">Upload File(s) <span
+                            class="text-danger">*</span></label>
+                    <div class="file-upload-area" id="process-file-area" style="color: #666;">
+                        <input type="file" id="process-file" name="file" multiple style="display: none;" required>
+                        <button type="button" class="btn btn-outline"
+                            onclick="document.getElementById('process-file').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M21 15V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V15M17 8L12 3M12 3L7 8M12 3V15"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                            Choose Files
+                        </button>
+                        <div id="process-file-list" class="file-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeProcessUploadModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit & Complete Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Project Detail Modal -->
+<div id="projectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Project Details</h2>
+            <span class="close" onclick="closeProjectModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Select Task
+    function selectTask(systemId, event) {
+        if (event) event.preventDefault();
+
+        const selectBtn = document.getElementById('select-btn-' + systemId);
+        if (!selectBtn) return;
+
+        selectBtn.disabled = true;
+        selectBtn.innerHTML = '<span>Processing...</span>';
+
+        const csrfToken = getCookie('csrftoken');
+
+        fetch(`/process/task/${systemId}/select/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+                selectBtn.disabled = false;
+                selectBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2"/></svg> Select';
+            });
+    }
+
+    // Toggle Submission Blocks
+    function toggleSubmissionBlocks(systemId) {
+        const submissionRow = document.getElementById('submission-row-' + systemId);
+        if (submissionRow) {
+            const isVisible = submissionRow.style.display !== 'none';
+            submissionRow.style.display = isVisible ? 'none' : 'table-row';
+            if (!isVisible) loadWriterSubmissions(systemId);
+        }
+    }
+
+    // Load Writer Submissions (Using dashboard formatting logic is not needed here as this is specific)
+    function loadWriterSubmissions(systemId) {
+        const structStatus = document.getElementById('structure-status-' + systemId);
+        const finalStatus = document.getElementById('final-status-' + systemId);
+        const structFiles = document.getElementById('structure-files-' + systemId);
+        const finalFiles = document.getElementById('final-files-' + systemId);
+
+        structStatus.textContent = 'Loading...'; structStatus.className = 'block-status loading';
+        finalStatus.textContent = 'Loading...'; finalStatus.className = 'block-status loading';
+
+        fetch(`/process/task/${systemId}/writer-submissions/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Structure
+                    if (data.structure) {
+                        structStatus.textContent = 'Submitted';
+                        structStatus.className = 'block-status';
+                        let filesHtml = '';
+                        if (data.structure.files && data.structure.files.length > 0) {
+                            data.structure.files.forEach(file => {
+                                filesHtml += `<div class="file-item"><a href="${file.file_url}" download>${file.filename}</a><a href="${file.file_url}" download class="download-btn">Download</a></div>`;
+                            });
+                        } else {
+                            filesHtml = '<p style="color: #666;">No files attached</p>';
+                        }
+                        structFiles.innerHTML = filesHtml;
+                    } else {
+                        structStatus.textContent = 'Not Submitted';
+                        structStatus.className = 'block-status pending';
+                        structFiles.innerHTML = '<p style="color: #999;">Writer has not submitted structure yet</p>';
+                    }
+
+                    // Final Copy
+                    if (data.final_copy) {
+                        finalStatus.textContent = 'Submitted';
+                        finalStatus.className = 'block-status';
+                        let filesHtml = '';
+                        if (data.final_copy.files && data.final_copy.files.length > 0) {
+                            data.final_copy.files.forEach(file => {
+                                filesHtml += `<div class="file-item"><a href="${file.file_url}" download>${file.filename}</a><a href="${file.file_url}" download class="download-btn">Download</a></div>`;
+                            });
+                        } else {
+                            filesHtml = '<p style="color: #666;">No files attached</p>';
+                        }
+                        finalFiles.innerHTML = filesHtml;
+                    } else {
+                        finalStatus.textContent = 'Not Submitted';
+                        finalStatus.className = 'block-status pending';
+                        finalFiles.innerHTML = '<p style="color: #999;">Writer has not submitted final copy yet</p>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                structFiles.innerHTML = '<p style="color: red;">Error loading submissions</p>';
+            });
+    }
+
+    // Upload Process File
+    function openProcessUploadModal(systemId) {
+        document.getElementById('process-system-id').value = systemId;
+        document.getElementById('processUploadModal').classList.add('active');
+        document.getElementById('process-notes').value = '';
+        document.getElementById('process-file').value = '';
+        document.getElementById('process-file-list').innerHTML = '';
+    }
+    function closeProcessUploadModal() {
+        document.getElementById('processUploadModal').classList.remove('active');
+    }
+    document.getElementById('process-file').addEventListener('change', function (e) {
+        const fileList = document.getElementById('process-file-list');
+        fileList.innerHTML = '';
+        if (this.files.length > 0) {
+            Array.from(this.files).forEach(file => {
+                fileList.innerHTML += `<div class="file-item"><span>${file.name}</span><span style="color: #666;">(${(file.size / 1024).toFixed(1)} KB)</span></div>`;
+            });
+        }
+    });
+    function submitProcessFile(event) {
+        event.preventDefault();
+        const systemId = document.getElementById('process-system-id').value;
+        const fileInput = document.getElementById('process-file');
+        const notes = document.getElementById('process-notes').value;
+        if (!fileInput.files.length) { alert('Please select a file to upload'); return; }
+
+        const formData = new FormData();
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('file', fileInput.files[i]);
+        }
+        formData.append('notes', notes);
+
+        const csrfToken = getCookie('csrftoken');
+
+        fetch(`/process/task/${systemId}/submit-process/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData,
+            credentials: 'same-origin'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Files submitted successfully! Task marked as completed.');
+                    closeProcessUploadModal();
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            })
+            .catch(error => alert('Error: ' + error.message));
+    }
+
+    // --- PROJECT MODAL: Match Dashboard Exactly ---
+    function openProjectModal(systemId) {
+        const modal = document.getElementById('projectModal');
+        const modalBody = document.getElementById('modalBody');
+        modal.classList.add('active');
+        modalBody.innerHTML = '<div class="loading-spinner">Loading project details...</div>';
+
+        // Using simple replacement for URL building
+        fetch(`/process/job/${systemId}/json/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                modalBody.innerHTML = buildModalContent(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                modalBody.innerHTML = `<div class="error-message" style="color: #ff6b6b; text-align: center; padding: 2rem;">
+                    <p style="font-weight: bold; margin-bottom: 0.5rem;">Error loading project details</p>
+                    <p style="font-size: 0.9rem; opacity: 0.8;">${error.message}</p>
+                </div>`;
+            });
+    }
+
+    function closeProjectModal() {
+        document.getElementById('projectModal').classList.remove('active');
+    }
+
+    function buildModalContent(data) {
+        const job = data.job;
+        const attachments = data.attachments || [];
+        const submissions = data.submissions || [];
+        const allocations = data.allocations || [];
+
+        let statusClass = job.status === 'process' ? 'process' : 'in-review';
+        let statusDisplay = job.status === 'process' ? 'Process' : job.status === 'in_review' ? 'In Review' : job.status;
+
+        let html = `
+    <!-- Project Details -->
+    <div class="detail-section">
+        <h3>📋 Project Details</h3>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Job ID</span>
+                <span class="detail-value">${job.system_id}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <span class="detail-value">
+                    <span class="status-badge status-${statusClass}">${statusDisplay}</span>
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Category</span>
+                <span class="detail-value">${job.category || 'N/A'}</span>
+            </div>
+        </div>
+        <div class="detail-item" style="margin-top: 15px;">
+            <span class="detail-label">Topic</span>
+            <span class="detail-value">${job.topic || 'N/A'}</span>
+        </div>
+        <div class="detail-grid" style="margin-top: 15px;">
+            <div class="detail-item">
+                <span class="detail-label">Word Count</span>
+                <span class="detail-value">${job.word_count || 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Referencing Style</span>
+                <span class="detail-value">${job.referencing_style ? job.referencing_style.toUpperCase() : 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Writing Style</span>
+                <span class="detail-value">${job.writing_style || 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Software</span>
+                <span class="detail-value">${job.software || 'N/A'}</span>
+            </div>
+        </div>
+        ${job.instruction ? `
+        <div class="detail-item" style="margin-top: 15px;">
+            <span class="detail-label">Instructions</span>
+            <span class="detail-value">${job.instruction}</span>
+        </div>` : ''}
+    </div>
+    `;
+
+        // Attachments Section
+        if (attachments.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>📎 Attachments (${attachments.length})</h3>
+            <ul class="attachment-list">
+        `;
+            attachments.forEach(att => {
+                html += `
+            <li class="attachment-item">
+                <div class="attachment-info">
+                    <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13 2V9H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="attachment-details">
+                        <span class="attachment-name">${att.original_filename || 'Document'}</span>
+                    </div>
+                </div>
+                <div class="attachment-download">
+                    <a href="${att.file}" download class="download-btn">Download</a>
+                </div>
+            </li>
+            `;
+            });
+            html += '</ul></div>';
+        }
+
+        // Writer Submissions Section
+        if (submissions.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>📝 Writer Submissions (${submissions.length})</h3>
+            <ul class="attachment-list">
+        `;
+            submissions.forEach(sub => {
+                html += `
+            <li class="attachment-item">
+                <div class="attachment-info">
+                    <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M14 2v6h6" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <div class="attachment-details">
+                        <span class="attachment-name">${sub.submission_type === 'structure' ? '📋 Structure' : '✍️ Final Copy'}</span>
+                        <span style="color: #666; font-size: 12px;">Submitted: ${formatDate(sub.submitted_at)}</span>
+                    </div>
+                </div>
+                <div class="attachment-download">
+                    <a href="${sub.file}" download class="download-btn">Download</a>
+                </div>
+            </li>
+            `;
+            });
+            html += '</ul></div>';
+        }
+
+        // Allocations Section
+        if (allocations.length > 0) {
+            html += `
+        <div class="detail-section">
+            <h3>👤 Allocations (${allocations.length})</h3>
+            <div class="detail-grid">
+        `;
+            allocations.forEach(alloc => {
+                html += `
+            <div class="detail-item">
+                <span class="detail-label">${alloc.allocation_type.toUpperCase()}</span>
+                <span class="detail-value">${alloc.allocated_user || 'Unknown'}</span>
+                <span style="color: #666; font-size: 12px;">Allocated: ${formatDate(alloc.allocated_at)}</span>
+            </div>
+            `;
+            });
+            html += '</div></div>';
+        }
+
+        return html;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '--';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Window OnClick for Modals
+    window.onclick = function (event) {
+        const projectModal = document.getElementById('projectModal');
+        const uploadModal = document.getElementById('processUploadModal');
+        if (event.target == projectModal) closeProjectModal();
+        if (event.target == uploadModal) closeProcessUploadModal();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,591 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketing Details - SuperAdmin Edit{% endblock %}
+
+{% block body_class %}theme-superadmin-3{% endblock %}
+
+{% block content %}
+<div class="job-details-header">
+    <div>
+        <h1 class="dashboard-title">Marketing Details</h1>
+        <p class="dashboard-subtitle">{{ job.system_id }} - {{ job.get_status_display }}</p>
+    </div>
+    <a href="{% url 'superadmin:marketing_job_drops' %}" class="btn btn-secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to Marketing Details
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <h4>AI Generated Summary</h4>
+        <div class="summary-content">
+            <div class="summary-item">
+                <span class="label">System ID</span>
+                <span class="value">{{ job.system_id }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Topic</span>
+                <span class="value">{{ job.topic }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Word Count</span>
+                <span class="value">{{ job.word_count }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Category</span>
+                <span class="value">{{ job.category }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="summary-card">
+        <h4>Initial Form Details</h4>
+        <div class="summary-content">
+            <div class="summary-item">
+                <span class="label">Job ID</span>
+                <span class="value">{{ job.job_id }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Status</span>
+                <span class="value">{{ job.get_status_display }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Submitted By</span>
+                <span class="value">{{ job_drop.submitted_by.email }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="summary-card">
+        <h4>Timeline</h4>
+        <div class="summary-content">
+            <div class="timeline-item">
+                <div class="timeline-marker success"></div>
+                <div class="timeline-text">
+                    <strong>Job ID Validated</strong>
+                    <small>{{ job.job_name_validated_at|date:"d M Y, H:i" }}</small>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker active"></div>
+                <div class="timeline-text">
+                    <strong>Job Created</strong>
+                    <small>{{ job.created_at|date:"d M Y, H:i" }}</small>
+                </div>
+            </div>
+            {% if job_drop.edited_at %}
+            <div class="timeline-item">
+                <div class="timeline-marker edited"></div>
+                <div class="timeline-text">
+                    <strong>Last Edited by SuperAdmin</strong>
+                    <small>{{ job_drop.edited_at|date:"d M Y, H:i" }} by {{ job_drop.edited_by.email }}</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Edit Form -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">Edit Job Details</h3>
+        <p class="card-description">SuperAdmin can modify job details. All changes are tracked and logged.</p>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'superadmin:job_drop_details' job.system_id %}" class="edit-form">
+            {% csrf_token %}
+            
+            <!-- Instruction Field -->
+            <div class="form-section">
+                <h5 class="section-title">Instruction</h5>
+                <div class="form-group">
+                    <label for="instruction">Instructions <span class="required">*</span></label>
+                    <textarea 
+                        id="instruction" 
+                        name="instruction" 
+                        class="form-control form-textarea" 
+                        rows="4"
+                        placeholder="Enter detailed instructions for this job"
+                    >{{ job.instruction }}</textarea>
+                </div>
+            </div>
+            
+            <!-- Categorization Fields -->
+            <div class="form-section">
+                <h5 class="section-title">Categorization</h5>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="category">Category</label>
+                        <select id="category" name="category" class="form-control">
+                            <option value="">-- Select Category --</option>
+                            {% for choice, label in category_choices %}
+                            <option value="{{ choice }}" {% if job.category == choice %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="level">Level</label>
+                        <select id="level" name="level" class="form-control">
+                            <option value="">-- Select Level --</option>
+                            {% for choice, label in level_choices %}
+                            <option value="{{ choice }}" {% if job.level == choice %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Details -->
+            <div class="form-section">
+                <h5 class="section-title">Content Details</h5>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="topic">Topic</label>
+                        <input 
+                            type="text" 
+                            id="topic" 
+                            name="topic" 
+                            class="form-control" 
+                            value="{{ job.topic }}"
+                            placeholder="Job topic/title"
+                        >
+                    </div>
+                    
+                    <div class="form-group col-md-3">
+                        <label for="word_count">Word Count</label>
+                        <input 
+                            type="number" 
+                            id="word_count" 
+                            name="word_count" 
+                            class="form-control" 
+                            value="{{ job.word_count }}"
+                            placeholder="0"
+                        >
+                    </div>
+                    
+                    <div class="form-group col-md-3">
+                        <label for="amount">Amount (₹)</label>
+                        <input 
+                            type="number" 
+                            id="amount" 
+                            name="amount" 
+                            class="form-control" 
+                            value="{{ job.amount }}"
+                            step="0.01"
+                            placeholder="0.00"
+                        >
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Writing Details -->
+            <div class="form-section">
+                <h5 class="section-title">Writing Requirements</h5>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="referencing_style">Referencing Style</label>
+                        <select id="referencing_style" name="referencing_style" class="form-control">
+                            <option value="">-- Select Referencing Style --</option>
+                            {% for choice, label in referencing_choices %}
+                            <option value="{{ choice }}" {% if job.referencing_style == choice %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="writing_style">Writing Style</label>
+                        <select id="writing_style" name="writing_style" class="form-control">
+                            <option value="">-- Select Writing Style --</option>
+                            {% for choice, label in writing_choices %}
+                            <option value="{{ choice }}" {% if job.writing_style == choice %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="software">Software/Tools Required</label>
+                    <input 
+                        type="text" 
+                        id="software" 
+                        name="software" 
+                        class="form-control" 
+                        value="{{ job.software }}"
+                        placeholder="e.g., Microsoft Word, Python, etc."
+                    >
+                </div>
+            </div>
+            
+            <!-- Customer Information -->
+            <div class="form-section">
+                <h5 class="section-title">Customer Information</h5>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="customer_id">Customer ID</label>
+                        <input 
+                            type="text" 
+                            id="customer_id" 
+                            name="customer_id" 
+                            class="form-control" 
+                            value="{{ job.customer_id }}"
+                        >
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="customer_name">Customer Name</label>
+                        <input 
+                            type="text" 
+                            id="customer_name" 
+                            name="customer_name" 
+                            class="form-control" 
+                            value="{{ job.customer_name }}"
+                        >
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status and Deadline -->
+            <div class="form-section">
+                <h5 class="section-title">Status & Deadline</h5>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="status">Job Status</label>
+                        <select id="status" name="status" class="form-control">
+                            {% for choice, label in status_choices %}
+                            <option value="{{ choice }}" {% if job.status == choice %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="deadline">Deadline</label>
+                        <input 
+                            type="date" 
+                            id="deadline" 
+                            name="deadline" 
+                            class="form-control" 
+                            value="{{ job.deadline|date:'Y-m-d' }}"
+                        >
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Save Changes
+                </button>
+                <a href="{% url 'superadmin:marketing_job_drops' %}" class="btn btn-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change History -->
+{% if job_drop.changes_history %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">Change History</h3>
+    </div>
+    <div class="card-body">
+        <div class="history-timeline">
+            {% for editor_email, changes in job_drop.changes_history.items %}
+            <div class="history-entry">
+                <h5>Edited by <strong>{{ editor_email }}</strong></h5>
+                <div class="changes-list">
+                    {% for field, change_data in changes.items %}
+                    <div class="change-item">
+                        <span class="field-name">{{ field|title }}</span>
+                        <div class="change-values">
+                            <span class="old-value">From: {{ change_data.old }}</span>
+                            <span class="new-value">To: {{ change_data.new }}</span>
+                        </div>
+                        <small class="timestamp">{{ change_data.changed_at }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .job-details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    
+    .summary-card h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+    
+    .summary-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .summary-item .label {
+        font-weight: 600;
+        color: var(--secondary);
+        font-size: 0.85rem;
+    }
+    
+    .summary-item .value {
+        color: var(--text-color);
+        font-weight: 500;
+    }
+    
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    
+    .timeline-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-top: 0.25rem;
+        flex-shrink: 0;
+    }
+    
+    .timeline-marker.success {
+        background-color: #10B981;
+    }
+    
+    .timeline-marker.active {
+        background-color: #3B82F6;
+    }
+    
+    .timeline-marker.edited {
+        background-color: #F59E0B;
+    }
+    
+    .timeline-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .timeline-text strong {
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
+    
+    .timeline-text small {
+        color: var(--secondary);
+        font-size: 0.8rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .section-title {
+        margin: 0 0 1rem 0;
+        color: var(--text-color);
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .form-group {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
+    
+    .required {
+        color: #EF4444;
+        margin-left: 0.25rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        font-size: 0.95rem;
+        font-family: inherit;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .col-md-6 {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .col-md-3 {
+        flex: 0 0 calc(50% - 0.75rem);
+        min-width: 200px;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-success {
+        background-color: #10B981;
+        color: white;
+        border: none;
+    }
+    
+    .btn-success:hover {
+        background-color: #059669;
+    }
+    
+    .history-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    
+    .history-entry {
+        border-left: 3px solid #F59E0B;
+        padding-left: 1.5rem;
+    }
+    
+    .history-entry h5 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+    
+    .changes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .change-item {
+        background-color: rgba(249, 158, 11, 0.1);
+        padding: 0.75rem;
+        border-radius: 6px;
+        border-left: 2px solid #F59E0B;
+    }
+    
+    .field-name {
+        display: block;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 0.5rem;
+    }
+    
+    .change-values {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .old-value {
+        color: #EF4444;
+        font-size: 0.9rem;
+    }
+    
+    .new-value {
+        color: #10B981;
+        font-size: 0.9rem;
+    }
+    
+    .timestamp {
+        color: var(--secondary);
+        font-size: 0.8rem;
+    }
+    
+    .mt-4 {
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}

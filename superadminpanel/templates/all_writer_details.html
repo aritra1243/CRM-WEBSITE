@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}All Writer Details{% endblock %}
+{% block body_class %}theme-superadmin-3{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Dark + green flatpickr theme */
+    .flatpickr-calendar {
+        background: #0b1221;
+        color: #e5e7eb;
+        border: 1px solid #0f3b2e;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-weekdays,
+    .flatpickr-weekday {
+        color: #e5e7eb;
+    }
+
+    .flatpickr-current-month input.cur-year,
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        color: #e5e7eb !important;
+    }
+
+    .flatpickr-day {
+        color: #e5e7eb;
+        border-radius: 6px;
+    }
+
+    .flatpickr-day.today {
+        border-color: #22c55e;
+        color: #bbf7d0;
+        background: rgba(34, 197, 94, 0.08);
+    }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        background: linear-gradient(135deg, #0f3b2e, #22c55e);
+        color: #0b1221;
+        border-color: #22c55e;
+    }
+
+    .flatpickr-day:hover {
+        background: rgba(34, 197, 94, 0.15);
+        border-color: #22c55e;
+    }
+
+    .flatpickr-time,
+    .flatpickr-time input,
+    .flatpickr-time .flatpickr-time-separator {
+        background: #0b1221;
+        color: #e5e7eb;
+    }
+
+    .flatpickr-monthDropdown-months {
+        background: #0b1221;
+        color: #e5e7eb;
+        border: 1px solid #0f3b2e;
+    }
+
+    .flatpickr-monthDropdown-months option {
+        background: #0b1221 !important;
+        color: #e5e7eb !important;
+    }
+
+    .pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #fff;
+    }
+
+    .pill-info {
+        background: linear-gradient(135deg, #2563EB, #38BDF8);
+    }
+
+    .pill-success {
+        background: linear-gradient(135deg, #10B981, #22D3EE);
+    }
+
+    .pill-warning {
+        background: linear-gradient(135deg, #F59E0B, #FBBF24);
+        color: #0b1221;
+    }
+
+    .pill-gray {
+        background: linear-gradient(135deg, #6B7280, #9CA3AF);
+    }
+
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 260px;
+        display: inline-block;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #4b5563;
+        transition: .2s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 3px;
+        background-color: white;
+        transition: .2s;
+        border-radius: 50%;
+    }
+
+    .toggle-switch input:checked+.slider {
+        background-color: #22c55e;
+    }
+
+    .toggle-switch input:checked+.slider:before {
+        transform: translateX(20px);
+    }
+
+    .status-chip {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .chip-active {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    .chip-inactive {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .kpi-card {
+        padding: 12px;
+        border-radius: 8px;
+        background: #1f2937;
+        color: #e5e7eb;
+        border: 1px solid #374151;
+    }
+
+    .kpi-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        opacity: 0.8;
+    }
+
+    .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .inline-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-plus {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .writer-kpi-link {
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+    }
+
+    .writer-kpi-link.active {
+        border-color: #10B981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        background: linear-gradient(135deg, #0f172a, #0b6b4d);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">All Writer Details</h1>
+        <p class="dashboard-subtitle">Search writers, filter by date, and view their job KPIs.</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <!-- <a href="{% url 'superadmin:marketing_job_drops' %}" class="btn btn-secondary btn-sm">Marketing Details</a> -->
+        <!-- <a href="{% url 'superadmin:marketing_manager_details' %}" class="btn btn-secondary btn-sm">Marketing Manager Details</a> -->
+        <a href="{% url 'superadmin:all_writer_details' %}" class="btn btn-primary btn-sm">All Writer Details</a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert" style="margin-bottom:8px;">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Search</h3>
+    </div>
+    <div class="card-body">
+        <form method="get" class="search-form" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="flex:1 1 220px;">
+                <label class="form-label">Writer name</label>
+                <select name="writer_q" class="form-control">
+                    <option value="">All writers</option>
+                    {% for w in writer_choices %}
+                    <option value="{{ w.id }}" {% if writer_q == w.id|stringformat:'s' %}selected{% endif %}>
+                        {{w.get_full_name|default:w.email }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="flex:1 1 180px;">
+                <label class="form-label">Employee ID</label>
+                <input type="text" name="emp_q" class="form-control" placeholder="Search Employee ID"
+                    value="{{ emp_q }}">
+            </div>
+            <div class="form-group" style="flex:1 1 220px;">
+                <label class="form-label">System ID / Job ID / Topic</label>
+                <input type="text" name="job_q" class="form-control" placeholder="Search jobs" value="{{ job_q }}">
+            </div>
+            <div class="form-group" style="flex:0 0 180px;">
+                <label class="form-label">From date</label>
+                <input type="text" name="from" id="fromDate" class="form-control" placeholder="dd-mm-yyyy"
+                    value="{{ from_date }}">
+            </div>
+            <div class="form-group" style="flex:0 0 180px;">
+                <label class="form-label">To date</label>
+                <input type="text" name="to" id="toDate" class="form-control" placeholder="dd-mm-yyyy"
+                    value="{{ to_date }}">
+            </div>
+            <div class="form-group" style="display:flex; gap:8px; flex:0 0 200px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Search</button>
+                <a href="{% url 'superadmin:all_writer_details' %}" class="btn btn-secondary" style="flex:1;">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if writer_data %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Writers</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Email ID</th>
+                        <th>Phone No</th>
+                        <th>Category</th>
+                        <th>Level</th>
+                        <th>Specialisation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in writer_data %}
+                    {% with writer=item.writer %}
+                    <tr>
+                        <td>{{ writer.employee_id|default:"—" }}</td>
+                        <td>{{ writer.get_full_name|default:writer.email }}</td>
+                        <td style="text-transform:uppercase;">{{ writer.role }}</td>
+                        <td>{{ writer.email }}</td>
+                        <td>{{ writer.phone|default:writer.whatsapp_number|default:"—" }}</td>
+                        <td>{{ writer.department|default:"—" }}</td>
+                        <td>{{ writer.level|default:"—" }}</td>
+                        <td>
+                            {% with specs=writer.specialisations.all %}
+                            {% if specs %}{{ specs|join:", " }}{% else %}—{% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <div class="inline-actions">
+                                <a class="btn btn-primary btn-sm"
+                                    href="{% url 'superadmin:writer_details' writer.id %}">View</a>
+                                <button class="btn btn-secondary btn-sm btn-plus" type="button" title="Expand details"
+                                    onclick="toggleWriter('{{ writer.id }}')">+</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr id="writer-{{ writer.id }}" class="writer-details-row" style="display:none;">
+                        <td colspan="8">
+                            <input type="hidden" id="writer-{{ writer.id }}-buckets"
+                                value='{{ item.today_buckets_json|default:"{}" }}'>
+                            <div class="kpi-grid">
+                                <div class="kpi-card writer-kpi-link active" data-writer="{{ writer.id }}"
+                                    data-bucket="today_all" onclick="setWriterKpiActive(this)">
+                                    <div class="kpi-title">Today Jobs</div>
+                                    <div class="kpi-value">{{ item.today_jobs }}</div>
+                                </div>
+                                <div class="kpi-card writer-kpi-link" data-writer="{{ writer.id }}"
+                                    data-bucket="today_completed" onclick="setWriterKpiActive(this)">
+                                    <div class="kpi-title">Today Completed Jobs</div>
+                                    <div class="kpi-value">{{ item.today_completed_jobs }}</div>
+                                </div>
+                                <div class="kpi-card writer-kpi-link" data-writer="{{ writer.id }}"
+                                    data-bucket="today_inprogress" onclick="setWriterKpiActive(this)">
+                                    <div class="kpi-title">Today In Progress Jobs</div>
+                                    <div class="kpi-value">{{ item.today_inprogress_jobs }}</div>
+                                </div>
+                                <div class="kpi-card writer-kpi-link" data-writer="{{ writer.id }}"
+                                    data-bucket="today_words" onclick="setWriterKpiActive(this)">
+                                    <div class="kpi-title">Today Word Count</div>
+                                    <div class="kpi-value">{{ item.today_words_count }}</div>
+                                </div>
+                                <div class="kpi-card writer-kpi-link" data-writer="{{ writer.id }}"
+                                    data-bucket="today_issues" onclick="setWriterKpiActive(this)">
+                                    <div class="kpi-title">Today Issues</div>
+                                    <div class="kpi-value">{{ item.today_issues }}</div>
+                                </div>
+                            </div>
+                            <div class="table-container" style="margin-top:16px;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>SL</th>
+                                            <th>System ID</th>
+                                            <th>Job ID</th>
+                                            <th>Topic</th>
+                                            <th>Category</th>
+                                            <th>Status</th>
+                                            <th>Word Count</th>
+                                            <th>Deadline</th>
+                                            <th>Amount</th>
+                                            <th>Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="writer-{{ writer.id }}-tbody"></tbody>
+                                </table>
+                                <div id="writer-{{ writer.id }}-empty" class="empty-state"
+                                    style="margin-top:12px; display:none;">No jobs for this writer with the current
+                                    filters.</div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">No writers found for the selected filters.</div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const opts = {
+            dateFormat: 'd-m-Y',
+            allowInput: true,
+        };
+        if (document.getElementById('fromDate')) {
+            flatpickr('#fromDate', opts);
+        }
+        if (document.getElementById('toDate')) {
+            flatpickr('#toDate', opts);
+        }
+    });
+
+    function renderWriterJobs(writerId, bucketKey) {
+        const bucketsEl = document.getElementById(`writer-${writerId}-buckets`);
+        if (!bucketsEl) return;
+        let data = {};
+        try {
+            data = JSON.parse(bucketsEl.value || '{}');
+        } catch (e) {
+            data = {};
+        }
+        const jobs = data[bucketKey] || [];
+        const tbody = document.getElementById(`writer-${writerId}-tbody`);
+        const empty = document.getElementById(`writer-${writerId}-empty`);
+        if (!tbody || !empty) return;
+        tbody.innerHTML = '';
+        if (!jobs.length) {
+            empty.style.display = '';
+            return;
+        }
+        empty.style.display = 'none';
+        jobs.forEach((job, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${job.system_id || '—'}</td>
+                <td>${job.job_id || '—'}</td>
+                <td><span class="text-truncate" title="${job.topic || ''}">${job.topic || '—'}</span></td>
+                <td>${job.category || '—'}</td>
+                <td style="text-transform:uppercase;">${job.status || '—'}</td>
+                <td>${job.word_count || '—'}</td>
+                <td>${job.deadline || '—'}</td>
+                <td>${job.amount || '—'}</td>
+                <td>${job.created_at || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function toggleWriter(id) {
+        const row = document.getElementById(`writer-${id}`);
+        if (!row) return;
+        const willOpen = row.style.display === 'none';
+        row.style.display = willOpen ? '' : 'none';
+        if (willOpen) {
+            const first = row.querySelector('.writer-kpi-link');
+            row.querySelectorAll('.writer-kpi-link').forEach(k => k.classList.remove('active'));
+            if (first) {
+                first.classList.add('active');
+                const bucket = first.getAttribute('data-bucket') || 'today_all';
+                renderWriterJobs(id, bucket);
+            }
+        }
+    }
+
+    function setWriterKpiActive(el) {
+        const writerId = el.getAttribute('data-writer');
+        const bucket = el.getAttribute('data-bucket') || 'today_all';
+        const row = document.getElementById(`writer-${writerId}`);
+        if (!row) return;
+        row.querySelectorAll('.writer-kpi-link').forEach(k => k.classList.remove('active'));
+        el.classList.add('active');
+        renderWriterJobs(writerId, bucket);
+    }
+</script>
+{% endblock %}

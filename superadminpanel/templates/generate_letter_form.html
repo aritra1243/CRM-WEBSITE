@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Fill Details | Generate Letter{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="header-title">
+        <h1>Letter Details</h1>
+        <p class="text-muted">Review auto-filled data and provide missing information</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'superadmin:generate_letter_selection' %}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    Generating: <strong>{{ template.get_letter_type_display }}</strong>
+                    for <strong>{{ target_user.get_full_name }}</strong>
+                </h3>
+            </div>
+            <div class="card-body">
+                <form action="{% url 'superadmin:generate_letter_preview' %}" method="POST" target="_blank">
+                    {% csrf_token %}
+                    <input type="hidden" name="template_id" value="{{ template.id }}">
+                    <input type="hidden" name="user_id" value="{{ target_user.id }}">
+
+                    <!-- Auto-filled Fields (Green) -->
+                    {% if auto_filled_fields %}
+                    <div class="mb-4 p-3 border rounded"
+                        style="background-color: #f0fff4; border-color: #c6f6d5 !important;">
+                        <h5 class="mb-3 text-success">
+                            <i class="fas fa-check-circle me-1"></i> Auto-Filled Data (From Profile)
+                        </h5>
+                        <div class="row">
+                            {% for field in auto_filled_fields %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-success fw-bold">{{ field.label }}</label>
+                                <input type="text" name="{{ field.name }}" value="{{ field.value }}"
+                                    class="form-control is-valid" style="background-color: #fff; color: #000;" readonly>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Manual Fields (Red) -->
+                    {% if manual_fields %}
+                    <div class="mb-4 p-3 border rounded"
+                        style="background-color: #fff5f5; border-color: #fed7d7 !important;">
+                        <h5 class="mb-3 text-danger">
+                            <i class="fas fa-exclamation-circle me-1"></i> Missing Data (Required)
+                        </h5>
+                        <div class="row">
+                            {% for field in manual_fields %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-danger fw-bold">{{ field.label }}</label>
+
+                                {% if field.type == 'select' %}
+                                <select name="{{ field.name }}" class="form-control" required
+                                    style="background-color: #fff; color: #000; border-color: #fc8181;">
+                                    <option value="" disabled selected>-- Select {{ field.label }} --</option>
+                                    {% for choice in field.choices %}
+                                    <option value="{{ choice }}">{{ choice }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% elif field.type == 'date' %}
+                                <input type="date" name="{{ field.name }}" class="form-control" required
+                                    style="background-color: #fff; color: #000; border-color: #fc8181;">
+                                {% else %}
+                                <input type="text" name="{{ field.name }}" class="form-control" required
+                                    style="background-color: #fff; color: #000; border-color: #fc8181;">
+                                {% endif %}
+
+                                <div class="form-text text-danger">Please enter value for {{ field.label }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    {% if not auto_filled_fields %}
+                    <div class="alert alert-info">No variables found in this template.</div>
+                    {% else %}
+                    <div class="alert alert-success">All variables matched with user profile!</div>
+                    {% endif %}
+                    {% endif %}
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Generate & Preview Letter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ org_address_map|json_script:"org-address-data" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Org name to address mapping from server
+        const orgAddressMap = JSON.parse(document.getElementById('org-address-data').textContent);
+
+        const childOrgSelect = document.querySelector('select[name="child_org_name"]');
+        const workLocationSelect = document.querySelector('select[name="work_location"]');
+
+        // Auto-fill work location when child org changes
+        if (childOrgSelect && workLocationSelect) {
+            childOrgSelect.addEventListener('change', function () {
+                const selectedOrg = this.value;
+                const address = orgAddressMap[selectedOrg] || '';
+
+                // Find and select the matching address option
+                let found = false;
+                for (let option of workLocationSelect.options) {
+                    if (option.value === address) {
+                        option.selected = true;
+                        found = true;
+                        break;
+                    }
+                }
+
+                // If no match found but address exists, add as new option
+                if (address && !found) {
+                    const newOption = document.createElement('option');
+                    newOption.value = address;
+                    newOption.text = address;
+                    newOption.selected = true;
+                    workLocationSelect.appendChild(newOption);
+                }
+            });
+        }
+
+        // Auto-calculate Annual CTC from Monthly Salary
+        const monthlySalaryInput = document.querySelector('input[name="monthly_salary"]');
+        const annualCtcInput = document.querySelector('input[name="annual_ctc"]');
+
+        if (monthlySalaryInput && annualCtcInput) {
+            monthlySalaryInput.addEventListener('input', function () {
+                const monthly = parseFloat(this.value) || 0;
+                const annual = monthly * 12;
+                annualCtcInput.value = annual.toFixed(2);
+            });
+        }
+    });
+</script>
+{% endblock %}

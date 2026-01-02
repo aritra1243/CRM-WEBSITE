@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Preview - {{ template.get_letter_type_display }}</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .letter-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .action-bar {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .content-wrapper {
+            margin-top: 60px;
+            /* Space for action bar */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="action-bar no-print">
+        <div style="font-family: sans-serif; font-weight: bold;">Letter Preview</div>
+        <div>
+            <button onclick="window.print()"
+                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                Print / Save as PDF
+            </button>
+            <a href="{% url 'superadmin:admin_my_letters' %}"
+                style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 10px; text-decoration: none; display: inline-block;">
+                Close
+            </a>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="letter-container">
+            <!-- Render the raw HTML content with substitutions -->
+            {{ final_content|safe }}
+        </div>
+    </div>
+
+</body>
+
+</html>

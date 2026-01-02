@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CRM Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="dashboard-title">{{ page_title }}</h1>
+            <p class="dashboard-subtitle">Record a new customer payment</p>
+        </div>
+        <a href="{% url 'marketing_dashboard' %}" class="btn btn-outline">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Payment Details</h2>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                <div class="messages mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.customer.id_for_label }}" class="form-label required">Customer</label>
+                        {{ form.customer }}
+                        {% if form.customer.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.customer.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label required">Payment Amount
+                                (₹)</label>
+                            {{ form.amount }}
+                            {% if form.amount.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.amount.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.payment_date.id_for_label }}" class="form-label required">Payment Date &
+                                Time (IST)</label>
+                            {{ form.payment_date }}
+                            {% if form.payment_date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.payment_date.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">All timestamps are recorded in IST.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.bank_name.id_for_label }}" class="form-label required">Bank Name</label>
+                        {{ form.bank_name }}
+                        {% if form.bank_name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.bank_name.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes (Optional)</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.notes.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.receipt.id_for_label }}" class="form-label">Payment Receipt
+                            (Optional)</label>
+                        {{ form.receipt }}
+                        <div class="form-text">Accepted formats: PDF, JPG, PNG, GIF (max 5MB)</div>
+                        {% if form.receipt.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.receipt.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'payment_entry' %}" class="btn btn-outline">Reset</a>
+                        <button type="submit" class="btn btn-primary">Submit Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-4 mb-4">
+            <h4
+                style="font-size: 1rem; color: var(--text-color-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                Payment Entry Guidelines</h4>
+            <div class="card bg-transparent border-dashed">
+                <div class="card-body">
+                    <ul style="padding-left: 1.25rem; color: var(--text-color-secondary); margin-bottom: 0;">
+                        <li class="mb-2">All payment timestamps are recorded in <strong>Indian Standard Time
+                                (IST)</strong></li>
+                        <li class="mb-2">Payment IDs are auto-generated with format: <code>PAY-YYYYMMDDHHMMSS</code>
+                        </li>
+                        <li class="mb-2">Enter the exact amount received from the customer</li>
+                        <li>Bank name should match the payment source for accounting purposes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .required:after {
+        content: " *";
+        color: #ef4444;
+    }
+
+    .border-dashed {
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .form-control {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+    }
+
+    .form-control:focus {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: var(--primary);
+        color: var(--text-color);
+        box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.25);
+    }
+
+    .form-text {
+        color: var(--text-color-muted);
+    }
+</style>
+{% endblock %}

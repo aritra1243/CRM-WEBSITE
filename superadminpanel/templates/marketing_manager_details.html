@@ -1,0 +1,334 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketing Manager Details{% endblock %}
+{% block body_class %}theme-superadmin-3{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Ensure flatpickr is legible on dark background */
+    .flatpickr-calendar {
+        background: #0f172a;
+        color: #e5e7eb;
+        z-index: 9999;
+        border: 1px solid #1f2937;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-weekdays,
+    .flatpickr-weekday {
+        color: #e5e7eb;
+    }
+    .flatpickr-current-month input.cur-year,
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        color: #e5e7eb !important;
+    }
+    .flatpickr-day {
+        color: #e5e7eb;
+    }
+    .flatpickr-day.today {
+        border-color: #3b82f6;
+        color: #93c5fd;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        background: #3b82f6;
+        color: #0b1221;
+    }
+    .flatpickr-time,
+    .flatpickr-time input,
+    .flatpickr-time .flatpickr-time-separator {
+        background: #0f172a;
+        color: #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Marketing Manager Details</h1>
+        <p class="dashboard-subtitle">Filter jobs by date range and review totals per marketing manager.</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="{% url 'superadmin:marketing_job_drops' %}" class="btn btn-secondary btn-sm">Marketing Details</a>
+        <a href="{% url 'superadmin:marketing_manager_details' %}" class="btn btn-primary btn-sm">Marketing Manager Details</a>
+        <!-- <a href="{% url 'superadmin:all_writer_details' %}" class="btn btn-secondary btn-sm">All Writer Details</a> -->
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert" style="margin-bottom:8px;">
+        {{ message }}
+    </div>
+    {% endfor %}
+ </div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Calendar Search</h3>
+    </div>
+    <div class="card-body">
+        <form method="get" class="search-form" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="flex:0 0 200px;">
+                <label class="form-label">From date</label>
+                <input type="text" name="from" id="fromDate" class="form-control" placeholder="dd-mm-yyyy" value="{{ from_date }}">
+            </div>
+            <div class="form-group" style="flex:0 0 200px;">
+                <label class="form-label">To date</label>
+                <input type="text" name="to" id="toDate" class="form-control" placeholder="dd-mm-yyyy" value="{{ to_date }}">
+            </div>
+            <div class="form-group" style="display:flex; gap:8px; flex:0 0 200px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Search</button>
+                <a href="{% url 'superadmin:marketing_manager_details' %}" class="btn btn-secondary" style="flex:1;">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if manager_data %}
+    {% for mgr in manager_data %}
+    <div class="card mb-3">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div>
+                <h4 class="card-title" style="margin:0;">{{ mgr.manager.get_full_name|default:mgr.manager.email }}</h4>
+                <p class="card-description" style="margin:0;">{{ mgr.manager.email }} | Jobs: {{ mgr.job_count }}</p>
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                <div class="pill pill-info">Target Amount: {{ mgr.target_amount|floatformat:2 }}</div>
+                <div class="pill pill-success">Job Amount: {{ mgr.total_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if mgr.customers %}
+            <div class="table-container" style="margin-bottom:1.5rem;">
+                <h5 style="margin:0 0 8px 0;">Customers</h5>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Customer Name</th>
+                            <th>Email ID</th>
+                            <th>Phone No</th>
+                            <th>Target Amount (₹)</th>
+                            <th>Current Amount (₹)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cust in mgr.customers %}
+                        <tr>
+                            <td>{{ cust.customer_id }}</td>
+                            <td>{{ cust.customer_name }}</td>
+                            <td>{{ cust.customer_email|default:"-" }}</td>
+                            <td>{{ cust.customer_phone|default:"-" }}</td>
+                            <td>
+                                <form method="post" action="{% url 'superadmin:update_customer_target' cust.customer_id %}" class="inline-form" style="display:inline-flex; gap:4px; align-items:center; margin:0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="from" value="{{ from_date }}">
+                                    <input type="hidden" name="to" value="{{ to_date }}">
+                                    <input type="number" name="target_amount" value="{{ cust.targeted_amount }}" step="0.01" min="1" required class="form-control" style="width:130px; padding:6px 8px; height:32px;">
+                                    <button class="btn btn-secondary btn-sm" type="submit">Set</button>
+                                </form>
+                            </td>
+                            <td>{{ cust.job_amount|floatformat:2 }}</td>
+                            <td>
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <form method="post" action="{% url 'superadmin:toggle_customer_active' cust.customer_id %}" style="margin:0; display:inline-flex; align-items:center; gap:6px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="from" value="{{ from_date }}">
+                                        <input type="hidden" name="to" value="{{ to_date }}">
+                                        <input type="hidden" name="active_state" value="{{ cust.is_active|yesno:'true,false' }}">
+                                        <label class="toggle-switch" title="Active / Inactive">
+                                            <input type="checkbox" name="active_toggle" onchange="this.form.active_state.value=this.checked?'true':'false'; this.form.submit();" {% if cust.is_active %}checked{% endif %}>
+                                            <span class="slider" style="padding: 0px 0px 0px 18px;">{% if cust.is_active %}Active{% else %}Inactive{% endif %}</span>
+                                        </label>
+                                        {% comment %} <span class="status-chip {% if cust.is_active %}chip-active{% else %}chip-inactive{% endif %}">
+                                            {% if cust.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span> {% endcomment %}
+                                    </form>
+                                    <button class="btn btn-primary btn-sm" type="button" onclick="toggleCustomerJobs('{{ mgr.manager.id }}','{{ cust.customer_id }}')">
+                                        View
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr id="cust-{{ mgr.manager.id }}-{{ cust.customer_id }}" class="customer-jobs-row" style="display:none;">
+                            <td colspan="7">
+                                <div class="table-container" style="margin-top:10px;">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>SL</th>
+                                                <th>System ID</th>
+                                                <th>Job ID</th>
+                                                <th>Topic</th>
+                                                <th>Category</th>
+                                                <th>Status</th>
+                                                <th>Word Count</th>
+                                                <th>Deadline</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for job in cust.jobs %}
+                                            <tr>
+                                                <td>{{ forloop.counter }}</td>
+                                                <td style="font-weight:700;">{{ job.system_id }}</td>
+                                                <td>{{ job.job_id }}</td>
+                                                <td><span class="text-truncate" title="{{ job.topic }}">{{ job.topic|default:"—" }}</span></td>
+                                                <td>{{ job.category|default:"—" }}</td>
+                                                <td style="text-transform:uppercase;">{{ job.status|default:"—" }}</td>
+                                                <td>{{ job.word_count|default:"—" }}</td>
+                                                <td>{{ job.deadline|date:"d/m/Y"|default:"—" }}</td>
+                                                <td>{{ job.amount|default:"—" }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr><td colspan="9" style="text-align:center;">No jobs for this customer.</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            <!-- <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SL</th>
+                            <th>System ID</th>
+                            <th>Job ID</th>
+                            <th>Topic</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Word Count</th>
+                            <th>Deadline</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in mgr.jobs %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td style="font-weight:700;">{{ job.system_id }}</td>
+                            <td>{{ job.job_id }}</td>
+                            <td>
+                                <span class="text-truncate" title="{{ job.topic }}">{{ job.topic|default:"—" }}</span>
+                            </td>
+                            <td>{{ job.category|default:"—" }}</td>
+                            <td style="text-transform:uppercase;">{{ job.status|default:"—" }}</td>
+                            <td>{{ job.word_count|default:"—" }}</td>
+                            <td>{{ job.deadline|date:"d/m/Y"|default:"—" }}</td>
+                            <td>{{ job.amount|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div> -->
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <div class="card-body">
+            <div class="empty-state">No jobs found for the selected date range.</div>
+        </div>
+    </div>
+{% endif %}
+
+<style>
+    .form-label { font-weight: 600; font-size: 0.9rem; display:block; margin-bottom:4px; }
+    .pill { padding: 8px 12px; border-radius: 999px; font-weight: 600; font-size: 0.9rem; color: #fff; }
+    .pill-info { background: linear-gradient(135deg, #2563EB, #38BDF8); }
+    .pill-success { background: linear-gradient(135deg, #10B981, #22D3EE); }
+    .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; display: inline-block; }
+    .toggle-switch { position: relative; display: inline-block; width: 80px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b5563; transition: .2s; border-radius: 24px; }
+    .slider:before { position: absolute; content: \"\"; height: 18px; width: 18px; left: 4px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }
+    .toggle-switch input:checked + .slider { background-color: #22c55e; }
+    .toggle-switch input:checked + .slider:before { transform: translateX(20px); padding: 2px 8px}
+    .status-chip { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    .chip-active { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.35); }
+    .chip-inactive { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.35); }
+    /* Dark + green flatpickr theme */
+    .flatpickr-calendar {
+        background: #0b1221;
+        color: #e5e7eb;
+        border: 1px solid #0f3b2e;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    }
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-weekdays,
+    .flatpickr-weekday {
+        color: #e5e7eb;
+    }
+    .flatpickr-current-month input.cur-year,
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        color: #1c57cf !important;
+    }
+    .flatpickr-day {
+        color: #e5e7eb;
+        border-radius: 6px;
+    }
+    .flatpickr-day.today {
+        border-color: #22c55e;
+        color: #bbf7d0;
+        background: rgba(34,197,94,0.08);
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        background: linear-gradient(135deg, #0f3b2e, #22c55e);
+        color: #0b1221;
+        border-color: #22c55e;
+    }
+    .flatpickr-day:hover {
+        background: rgba(34,197,94,0.15);
+        border-color: #22c55e;
+    }
+    .flatpickr-time,
+    .flatpickr-time input,
+    .flatpickr-time .flatpickr-time-separator {
+        background: #0b1221;
+        color: #e5e7eb;
+    }
+  </style>
+  {% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const opts = {
+            dateFormat: 'd-m-Y',
+            allowInput: true,
+        };
+        if (document.getElementById('fromDate')) {
+            flatpickr('#fromDate', opts);
+        }
+        if (document.getElementById('toDate')) {
+            flatpickr('#toDate', opts);
+        }
+    });
+
+    function toggleCustomerJobs(managerId, customerId) {
+        const row = document.getElementById(`cust-${managerId}-${customerId}`);
+        if (!row) return;
+        row.style.display = row.style.display === 'none' ? '' : 'none';
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Writer Details{% endblock %}
+{% block body_class %}theme-superadmin-3{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Dark + green flatpickr theme */
+    .flatpickr-calendar {
+        background: #0b1221;
+        color: #e5e7eb;
+        border: 1px solid #0f3b2e;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    }
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-weekdays,
+    .flatpickr-weekday {
+        color: #235bcc;
+    }
+    .flatpickr-current-month input.cur-year,
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        color: #205edb !important;
+    }
+    .flatpickr-day {
+        color: #e5e7eb;
+        border-radius: 6px;
+    }
+    .flatpickr-day.today {
+        border-color: #22c55e;
+        color: #bbf7d0;
+        background: rgba(34,197,94,0.08);
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        background: linear-gradient(135deg, #0f3b2e, #22c55e);
+        color: #0b1221;
+        border-color: #22c55e;
+    }
+    .flatpickr-day:hover {
+        background: rgba(34,197,94,0.15);
+        border-color: #22c55e;
+    }
+    .flatpickr-time,
+    .flatpickr-time input,
+    .flatpickr-time .flatpickr-time-separator {
+        background: #0b1221;
+        color: #e5e7eb;
+    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 12px; }
+    .kpi-card { padding: 12px; border-radius: 8px; background: #0b1221; color: #e5e7eb; border: 1px solid #1f2937; }
+    .kpi-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: .4px; opacity: 0.8; }
+    .kpi-value { font-size: 1.5rem; font-weight: 700; }
+    .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; display: inline-block; }
+    .kpi-link { text-decoration: none; cursor: pointer; display: block; border: 1px solid transparent; transition: all 0.15s ease; }
+    .kpi-link:hover { border-color: #2563EB; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); }
+    .kpi-link.active { border-color: #10B981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, #0f172a, #0b6b4d); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Writer Details</h1>
+        <p class="dashboard-subtitle">KPIs and jobs for {{ writer.get_full_name|default:writer.email }}</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="{% url 'superadmin:all_writer_details' %}" class="btn btn-secondary btn-sm">All Writer Details</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Filters</h3>
+    </div>
+    <div class="card-body">
+        <form method="get" class="search-form" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="flex:0 0 200px;">
+                <label class="form-label">From date</label>
+                <input type="text" name="from" id="fromDate" class="form-control" placeholder="dd-mm-yyyy" value="{{ from_date }}">
+            </div>
+            <div class="form-group" style="flex:0 0 200px;">
+                <label class="form-label">To date</label>
+                <input type="text" name="to" id="toDate" class="form-control" placeholder="dd-mm-yyyy" value="{{ to_date }}">
+            </div>
+            <div class="form-group" style="display:flex; gap:8px; flex:0 0 200px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Search</button>
+                <a href="{% url 'superadmin:writer_details' writer.id %}" class="btn btn-secondary" style="flex:1;">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Writer</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Email ID</th>
+                        <th>Phone No</th>
+                        <th>Category</th>
+                        <th>Level</th>
+                        <th>Specialisation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ writer.employee_id|default:"—" }}</td>
+                        <td>{{ writer.get_full_name|default:writer.email }}</td>
+                        <td style="text-transform:uppercase;">{{ writer.role }}</td>
+                        <td>{{ writer.email }}</td>
+                        <td>{{ writer.phone|default:writer.whatsapp_number|default:"—" }}</td>
+                        <td>{{ writer.department|default:"—" }}</td>
+                        <td>{{ writer.level|default:"—" }}</td>
+                        <td>
+                            {% with specs=writer.specialisations.all %}
+                                {% if specs %}{{ specs|join:", " }}{% else %}—{% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="kpi-grid">
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="total">
+                <div class="kpi-title">Total Jobs</div>
+                <div class="kpi-value">{{ total_jobs }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="completed">
+                <div class="kpi-title">Completed Jobs</div>
+                <div class="kpi-value">{{ completed_jobs }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="in_progress">
+                <div class="kpi-title">In Progress Jobs</div>
+                <div class="kpi-value">{{ in_progress_jobs }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="today">
+                <div class="kpi-title">Today Jobs</div>
+                <div class="kpi-value">{{ today_jobs }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="today">
+                <div class="kpi-title">Today Word Count</div>
+                <div class="kpi-value">{{ today_words }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="week">
+                <div class="kpi-title">Weekly Jobs</div>
+                <div class="kpi-value">{{ week_jobs }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="week">
+                <div class="kpi-title">Weekly Word Count</div>
+                <div class="kpi-value">{{ week_words }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="issues_year">
+                <div class="kpi-title">Yearly Issues</div>
+                <div class="kpi-value">{{ issues_year }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="issues_week">
+                <div class="kpi-title">Weekly Issues</div>
+                <div class="kpi-value">{{ issues_week }}</div>
+            </a>
+            <a class="kpi-card kpi-link" href="#writer-job-table" onclick="setActiveKpi(this)" data-bucket="issues_today">
+                <div class="kpi-title">Today Issues</div>
+                <div class="kpi-value">{{ issues_today }}</div>
+            </a>
+        </div>
+
+        <div class="table-container" id="writer-job-table" style="margin-top:16px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>SL</th>
+                        <th>System ID</th>
+                        <th>Job ID</th>
+                        <th>Topic</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Word Count</th>
+                        <th>Deadline</th>
+                        <th>Amount</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="job-table-body">
+                    <!-- rows injected by JS -->
+                </tbody>
+            </table>
+            <div id="no-jobs" class="empty-state" style="margin-top:12px; display:none;">No jobs found for this writer with current filters.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    const jobBuckets = JSON.parse('{{ job_buckets_json|default:"{}"|escapejs }}');
+    function renderJobs(bucketKey) {
+        const tbody = document.getElementById('job-table-body');
+        const empty = document.getElementById('no-jobs');
+        tbody.innerHTML = '';
+        const data = jobBuckets[bucketKey] || [];
+        if (!data.length) {
+            empty.style.display = '';
+            return;
+        }
+        empty.style.display = 'none';
+        data.forEach((job, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${job.system_id || '—'}</td>
+                <td>${job.job_id || '—'}</td>
+                <td><span class="text-truncate" title="${job.topic || ''}">${job.topic || '—'}</span></td>
+                <td>${job.category || '—'}</td>
+                <td style="text-transform:uppercase;">${job.status || '—'}</td>
+                <td>${job.word_count || '—'}</td>
+                <td>${job.deadline || '—'}</td>
+                <td>${job.amount || '—'}</td>
+                <td>${job.created_at || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const opts = {
+            dateFormat: 'd-m-Y',
+            allowInput: true,
+        };
+        if (document.getElementById('fromDate')) {
+            flatpickr('#fromDate', opts);
+        }
+        if (document.getElementById('toDate')) {
+            flatpickr('#toDate', opts);
+        }
+        // initial render
+        renderJobs('total');
+        const firstKpi = document.querySelector('.kpi-link');
+        if (firstKpi) firstKpi.classList.add('active');
+    });
+
+    function setActiveKpi(el) {
+        document.querySelectorAll('.kpi-link').forEach(k => k.classList.remove('active'));
+        el.classList.add('active');
+        const bucket = el.dataset.bucket || 'total';
+        renderJobs(bucket);
+    }
+</script>
+{% endblock %}

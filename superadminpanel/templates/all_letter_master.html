@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}All Letter Master - CRM Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .letter-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--info) 0%, #2094f3 100%);
+        color: white;
+    }
+
+    /* Textarea styling */
+    textarea.form-control {
+        min-height: 200px;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Back Button -->
+    <div style="margin-bottom: var(--spacing-lg);">
+        <a href="{% url 'superadmin:master_input' %}" class="btn btn-outline">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Master Input
+        </a>
+    </div>
+
+    <!-- Page Header -->
+    <div class="dashboard-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xl);">
+        <div>
+            <h1 class="dashboard-title">All Letter Master</h1>
+            <p class="dashboard-subtitle">Manage letter templates and formats</p>
+        </div>
+        <button onclick="showCreateLetterModal()" class="btn btn-primary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Letter Template
+        </button>
+    </div>
+
+    <!-- Letter Templates List -->
+    <div class="card mt-4">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 class="card-title">Letter Templates</h3>
+                <p class="dashboard-subtitle">All created templates ({{ total_templates }})</p>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" id="letterSearchInput" class="form-control" placeholder="Search Letter Type..."
+                    style="width: 300px;">
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="table-container table-scroll-lock">
+                {% if templates %}
+                <table class="data-table" id="lettersTable">
+                    <thead>
+                        <tr>
+                            <th>SL. No</th>
+                            <th>Letter Type</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for letter in templates %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td data-column="type">
+                                <span class="letter-badge">
+                                    {{ letter.get_letter_type_display }}
+                                </span>
+                                {% if letter.is_trigger %}
+                                <span
+                                    style="margin-left: 8px; font-size: 11px; background: rgba(var(--warning), 0.2); color: var(--warning); padding: 2px 6px; border-radius: 4px;">TRIGGER</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ letter.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-outline btn-sm" data-id="{{ letter.id }}"
+                                        data-action="{% url 'superadmin:edit_letter_template' letter.id %}"
+                                        data-type="{{ letter.letter_type }}"
+                                        data-content="{{ letter.template_content }}"
+                                        data-trigger="{{ letter.is_trigger|yesno:'true,false' }}"
+                                        onclick="showEditLetterModal(this)">
+                                        Edit
+                                    </button>
+                                    <form method="POST" action="{% url 'superadmin:delete_letter_template' letter.id %}"
+                                        onsubmit="return confirm('Are you sure you want to delete this template?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="text-align: center; padding: 2rem; opacity: 0.7;">
+                    <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        style="opacity: 0.3;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p style="font-size: 16px;">No templates created yet</p>
+                    <p style="font-size: 14px; opacity: 0.6; margin-top: 6px;">
+                        Click “Create Letter Template” to add your first template
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Letter Modal -->
+<div class="modal-overlay" id="createLetterModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="letterModalTitle">Create Letter Template</h2>
+            <button type="button" class="modal-close" onclick="closeModal('createLetterModal')">&times;</button>
+        </div>
+
+        <form method="POST" action="{% url 'superadmin:create_letter_template' %}" id="letterForm">
+            {% csrf_token %}
+
+            <!-- Letter Type -->
+            <div class="form-group">
+                <label for="letter_type" class="form-label required">Letter Type</label>
+                <select id="letter_type" name="letter_type" class="form-control form-select" required>
+                    <option value="">Select Letter Type</option>
+                    <option value="appointment">Appointment Letter</option>
+                    <option value="experience">Experience Letter</option>
+                    <option value="joining">Joining Letter</option>
+                    <option value="no_objection">No Objection Letter</option>
+                    <option value="offer">Offer Letter</option>
+                    <option value="payment">Payment Letter</option>
+                    <option value="relieving">Relieving Letter</option>
+                    <option value="salary_increment">Salary Increment Letter</option>
+                    <option value="termination">Termination Letter</option>
+                    <option value="warning">Warning Letter</option>
+                </select>
+            </div>
+
+            <!-- Is Trigger (Hidden visually but functional if needed later, or exposed if requested) -->
+            <!-- For now, we will handle it in backend or just default false, but I'll add a checkbox just in case user wants control -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="is_trigger" name="is_trigger">
+                <label for="is_trigger" style="margin: 0; cursor: pointer;">Is Trigger Action? (e.g. for Offer
+                    Letter)</label>
+            </div>
+
+            <!-- Template Content -->
+            <div class="form-group">
+                <label for="template_content" class="form-label required">Template Content</label>
+                <textarea id="template_content" name="template_content" class="form-control"
+                    placeholder="Enter HTML content here..." required></textarea>
+                <small style="opacity: 0.6; display: block; margin-top: 4px;">Use HTML for formatting. Variables can be
+                    added later.</small>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline" onclick="closeModal('createLetterModal')">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="letterSubmitBtn">
+                    Create Template
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const letterModalState = {
+        modalId: 'createLetterModal',
+        createAction: '{% url "superadmin:create_letter_template" %}',
+        form: null,
+        title: null,
+        submitBtn: null,
+    };
+
+    function resetLetterForm() {
+        if (!letterModalState.form) return;
+        letterModalState.form.reset();
+        letterModalState.form.action = letterModalState.createAction;
+    }
+
+    function showCreateLetterModal() {
+        resetLetterForm();
+        if (letterModalState.title) letterModalState.title.textContent = 'Create Letter Template';
+        if (letterModalState.submitBtn) letterModalState.submitBtn.textContent = 'Create Template';
+        openModal(letterModalState.modalId);
+    }
+
+    function showEditLetterModal(button) {
+        if (!letterModalState.form || !button) return;
+
+        resetLetterForm();
+
+        if (letterModalState.title) letterModalState.title.textContent = 'Edit Letter Template';
+        if (letterModalState.submitBtn) letterModalState.submitBtn.textContent = 'Update Template';
+
+        letterModalState.form.action = button.dataset.action || letterModalState.createAction;
+
+        document.getElementById('letter_type').value = button.dataset.type || '';
+        document.getElementById('template_content').value = button.dataset.content || '';
+        document.getElementById('is_trigger').checked = button.dataset.trigger === 'true';
+
+        openModal(letterModalState.modalId);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        letterModalState.form = document.getElementById('letterForm');
+        letterModalState.title = document.getElementById('letterModalTitle');
+        letterModalState.submitBtn = document.getElementById('letterSubmitBtn');
+    });
+
+    document.getElementById("letterSearchInput").addEventListener("keyup", function () {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll("#lettersTable tbody tr");
+
+        rows.forEach(row => {
+            let typeText = row.querySelector('[data-column="type"]').innerText.toLowerCase();
+            row.style.display = typeText.includes(filter) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

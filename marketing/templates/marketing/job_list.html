@@ -1,0 +1,459 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CRM Portal{% endblock %}
+
+{% block content %}
+<!-- <div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">{{ page_title }}</h1>
+        {% if filter_description %}
+            <p class="dashboard-subtitle">{{ filter_description }}</p>
+        {% endif %}
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'create_job' %}" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Create Job
+        </a>
+    </div>
+</div> -->
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+
+        <div>
+            <h1 class="dashboard-title">{{ page_title }}</h1>
+
+            {% if filter_description %}
+            <p class="dashboard-subtitle">{{ filter_description }}</p>
+            {% endif %}
+        </div>
+
+        <a href="{% url 'marketing_dashboard' %}" class="btn btn-outline">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+            Back to Dashboard
+        </a>
+
+    </div>
+</div>
+
+
+{% comment %} <div class="card">
+    <div class="card-header job-list-header">
+        <div>
+            <h2 class="card-title">{{ page_title }}</h2>
+            <p class="card-subtitle">Showing {{ jobs|length }} of {{ total_jobs }} jobs</p>
+        </div>
+        <div class="total-chip">
+            <span>Total</span>
+            <strong>{{ total_jobs }}</strong>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if jobs %}
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>System ID</th>
+                        <th>Job ID</th>
+                        <th>Topic</th>
+                        <th>Word Count</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Allocated To</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>{{ job.system_id }}</td>
+                        <td>{{ job.job_id }}</td>
+                        <td>{{ job.topic|default:"Awaiting summary" }}</td>
+                        <td>
+                            {% if job.word_count %}
+                            {{ job.word_count|floatformat:0 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-tag status-{{ job.status|default:'unknown' }}">
+                                {{ job.get_status_display|default:job.status|default:"Unknown" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if job.deadline %}
+                            {{ job.deadline|date:"d M Y" }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.allocated_to %}
+                            {{ job.allocated_to.get_full_name|default:job.allocated_to.email }}
+                            {% else %}
+                            <span class="text-muted">Not allocated</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ job.updated_at|date:"d M Y, H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if jobs.has_other_pages %}
+        <div class="pagination">
+            {% if jobs.has_previous %}
+            <a class="page-link" href="-page={{ jobs.previous_page_number }}">Previous</a>
+            {% else %}
+            <span class="page-link disabled">Previous</span>
+            {% endif %}
+
+            <span class="page-indicator">Page {{ jobs.number }} of {{ jobs.paginator.num_pages }}</span>
+
+            {% if jobs.has_next %}
+            <a class="page-link" href="-page={{ jobs.next_page_number }}">Next</a>
+            {% else %}
+            <span class="page-link disabled">Next</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d="M20 7H4C2.895 7 2 7.895 2 9V19C2 20.105 2.895 21 4 21H20C21.105 21 22 20.105 22 19V9C22 7.895 21.105 7 20 7Z"
+                    stroke="currentColor" stroke-width="2" />
+                <path
+                    d="M16 21V5C16 4.47 15.789 3.961 15.414 3.586C15.039 3.211 14.53 3 14 3H10C9.47 3 8.961 3.211 8.586 3.586C8.211 3.961 8 4.47 8 5V21"
+                    stroke="currentColor" stroke-width="2" />
+            </svg>
+            <h3>{{ empty_state.title }}</h3>
+            <p>{{ empty_state.description }}</p>
+            <a href="{{ empty_state.cta_url }}" class="btn btn-primary">{{ empty_state.cta_label }}</a>
+        </div>
+        {% endif %}
+    </div>
+</div> {% endcomment %}
+<div class="card mt-4">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 class="card-title">{{ page_title }}</h3>
+            <p class="dashboard-subtitle">Showing <span id="visibleCount">{{ jobs|length }}</span> of {{ total_jobs }}
+                jobs</p>
+        </div>
+
+        <div class="total-chip">
+            <span>Total</span>
+            <strong>{{ total_jobs }}</strong>
+        </div>
+    </div>
+
+    <div class="card-body">
+        {% if jobs %}
+        <div class="table-filters"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+            <input type="text" id="jobSearch" class="form-control" placeholder="Search by System ID, Job ID, or Topic">
+            <select id="jobStatus" class="form-control">
+                <option value="">All Statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select id="jobCategory" class="form-control">
+                <option value="">All Categories</option>
+                {% for value, label in category_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-primary" type="button" onclick="applyJobFilters()">Search</button>
+                <button class="btn btn-outline" type="button" onclick="resetJobFilters()">Reset</button>
+            </div>
+        </div>
+        <div class="table-container table-scroll-lock">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>SL. No</th>
+                        <th>System ID</th>
+                        <th>Job ID</th>
+                        <th>Topic</th>
+                        <th>Category</th>
+                        <th>Word Count</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Allocated To</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for job in jobs %}
+                    <tr data-job-row data-status="{{ job.status|default:'' }}"
+                        data-category="{{ job.category|default:'' }}"
+                        data-search="{{ job.system_id|default:'' }} {{ job.job_id|default:'' }} {{ job.topic|default:'' }}">
+                        <td>{{ forloop.counter }}</td>
+
+                        <td>{{ job.system_id }}</td>
+
+                        <td>{{ job.job_id }}</td>
+
+                        <td style="font-weight: 600;" data-column="topic">
+                            {{ job.topic|default:"Awaiting summary" }}
+                        </td>
+
+                        <td>{{ job.get_category_display|default:"-" }}</td>
+
+                        <td>
+                            {% if job.word_count %}
+                            {{ job.word_count|floatformat:0 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <span class="status-tag status-{{ job.status|default:'pending' }}">
+                                {{ job.get_status_display|default:job.status|default:"Unknown" }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <div style="font-weight: 500;">{{ job.expected_deadline|default:job.strict_deadline|date:"d M Y"|default:"-" }}</div>
+                            {% if job.expected_deadline or job.strict_deadline %}
+                            <div style="font-size: 0.75rem; opacity: 0.7;">
+                                {{job.expected_deadline|default:job.strict_deadline|date:"H:i" }}</div>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if job.allocated_to %}
+                            {{ job.allocated_to.get_full_name|default:job.allocated_to.email }}
+                            {% else %}
+                            <span class="text-muted">Not allocated</span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ job.updated_at|date:"d M Y, H:i" }}</td>
+                        <td>
+                            <a href="{% url 'view_job_details' job.system_id %}" class="btn btn-sm btn-primary">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if jobs.has_other_pages %}
+        <div class="table-pagination">
+
+            <div class="table-pagination__controls">
+                {% if jobs.has_previous %}
+                <a href="-page={{ jobs.previous_page_number }}" class="table-pagination__btn">‹</a>
+                {% else %}
+                <button class="table-pagination__btn" disabled>‹</button>
+                {% endif %}
+            </div>
+
+            <span>Page {{ jobs.number }} of {{ jobs.paginator.num_pages }}</span>
+
+            <div class="table-pagination__controls">
+                {% if jobs.has_next %}
+                <a href="-page={{ jobs.next_page_number }}" class="table-pagination__btn">›</a>
+                {% else %}
+                <button class="table-pagination__btn" disabled>›</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- EMPTY STATE -->
+        <div class="empty-state" style="text-align: center; padding: 4rem 2rem;">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-bottom: 1.5rem; opacity: 0.4;">
+                <path d="M20 7H4C2.895 7 2 7.895 2 9V19C2 20.105 
+                         2.895 21 4 21H20C21.105 21 22 20.105 
+                         22 19V9C22 7.895 21.105 7 20 7Z" />
+                <path d="M16 21V5C16 4.47 15.789 3.961 
+                         15.414 3.586C15.039 3.211 14.53 3 
+                         14 3H10C9.47 3 8.961 3.211 
+                         8.586 3.586C8.211 3.961 8 4.47 8 5V21" />
+            </svg>
+
+            <h3>{{ empty_state.title }}</h3>
+            <p>{{ empty_state.description }}</p>
+
+            <a href="{{ empty_state.cta_url }}" class="btn btn-primary">
+                {{ empty_state.cta_label }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Client-side filters for job list
+    function applyJobFilters() {
+        const searchTerm = (document.getElementById('jobSearch').value || '').toLowerCase();
+        const statusFilter = (document.getElementById('jobStatus').value || '').toLowerCase();
+        const categoryFilter = (document.getElementById('jobCategory').value || '').toLowerCase();
+        const rows = document.querySelectorAll('[data-job-row]');
+        let visible = 0;
+
+        rows.forEach(row => {
+            const rowSearch = (row.dataset.search || '').toLowerCase();
+            const rowStatus = (row.dataset.status || '').toLowerCase();
+            const rowCategory = (row.dataset.category || '').toLowerCase();
+
+            // OR across System ID / Job ID / Topic via combined search text
+            const matchesSearch = !searchTerm || rowSearch.includes(searchTerm);
+            const matchesStatus = !statusFilter || rowStatus === statusFilter;
+            const matchesCategory = !categoryFilter || rowCategory === categoryFilter;
+
+            const show = matchesSearch && matchesStatus && matchesCategory;
+            row.style.display = show ? '' : 'none';
+            if (show) visible += 1;
+        });
+
+        const visibleEl = document.getElementById('visibleCount');
+        if (visibleEl) {
+            visibleEl.textContent = visible;
+        }
+    }
+
+    function resetJobFilters() {
+        document.getElementById('jobSearch').value = '';
+        document.getElementById('jobStatus').value = '';
+        document.getElementById('jobCategory').value = '';
+        applyJobFilters();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        ['jobSearch', 'jobStatus', 'jobCategory'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', applyJobFilters);
+            el.addEventListener('change', applyJobFilters);
+        });
+    });
+</script>
+
+<style>
+    .job-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .card-subtitle {
+        margin: 0;
+        color: var(--text-color-muted, #6c757d);
+    }
+
+    .total-chip {
+        background: var(--surface-muted, #f4f6fb);
+        border-radius: 40px;
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .data-table {
+        width: 100%;
+        min-width: 1200px;
+        /* Ensure horizontal scroll on smaller screens */
+    }
+    }
+
+    .data-table th,
+    .data-table td {
+        white-space: nowrap;
+    }
+
+    .status-tag {
+        text-transform: capitalize;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-color, #2f3246);
+    }
+
+    .empty-state svg {
+        opacity: 0.4;
+        margin-bottom: 1rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .page-link {
+        padding: 0.5rem 1.25rem;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .page-link.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .page-indicator {
+        font-weight: 600;
+    }
+
+    .text-muted {
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}

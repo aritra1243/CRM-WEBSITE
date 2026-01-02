@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Allocate Job - {{ job.job_id }}{% endblock %}
+{% block extra_css %}
+<style>
+.allocation-form-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+.form-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+.form-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(78, 205, 196, 0.3);
+}
+.form-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+.form-header .subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+.form-group {
+    margin-bottom: 1.5rem;
+}
+.form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+}
+.form-label.required::after {
+    content: ' *';
+    color: #ff4444;
+}
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+.form-control option {
+    background: #1a1a1a;
+    color: #fff;
+}
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+.info-box {
+    background: rgba(78, 205, 196, 0.1);
+    border-left: 4px solid var(--primary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.info-box-title {
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+.info-box-content {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+}
+.btn {
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: #fff;
+}
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(78, 205, 196, 0.3);
+}
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+.validation-message {
+    font-size: 0.85rem;
+    color: #ff4444;
+    margin-top: 0.5rem;
+    display: none;
+}
+.validation-message.show {
+    display: block;
+}
+.deadline-warning {
+    background: rgba(255, 152, 0, 0.1);
+    border-left: 4px solid #FF9800;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+.allocation-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+.badge-writer {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+}
+.badge-process {
+    background: rgba(156, 39, 176, 0.2);
+    color: #9C27B0;
+}
+@media (max-width: 768px) {
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="allocation-form-wrapper">
+    <div class="form-card">
+        <div class="form-header">
+            <h1>
+                Allocate Job to {% if allocation_type == 'process' %}Process Team{% else %}Writer{% endif %}
+                <span class="allocation-type-badge badge-{{ allocation_type }}">
+                    {{ allocation_type|title }}
+                </span>
+            </h1>
+            <p class="subtitle">Job ID: {{ job.job_id }} | System ID: {{ job.system_id }}</p>
+        </div>
+        
+        <!-- Job Info -->
+        <div class="info-box">
+            <div class="info-box-title">Job Information</div>
+            <div class="info-box-content">
+                <strong>Topic:</strong> {{ job.topic|default:"No topic specified" }}<br>
+                <strong>Word Count:</strong> {{ job.word_count|default:"--" }}<br>
+                <strong>Category:</strong> {{ job_category|default:"General" }}<br>
+                <strong>Status:</strong> {{ job.status|title }}<br>
+                {% if expected_deadline %}
+                <strong>Expected Deadline:</strong> {{ expected_deadline|date:"d M Y H:i" }}<br>
+                {% endif %}
+                {% if strict_deadline %}
+                <strong>Strict Deadline:</strong> {{ strict_deadline|date:"d M Y H:i" }}
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Allocation Form -->
+        <form method="POST" id="allocationForm">
+            {% csrf_token %}
+            
+            <!-- Team Member Filter Note -->
+            {% if team_filter_note %}
+            <div class="info-box" style="background: rgba(33, 150, 243, 0.1); border-left-color: #2196F3; margin-bottom: 1.5rem;">
+                <div class="info-box-title" style="color: #2196F3;">
+                    {% if allocation_type == 'process' %}Process Team{% else %}Writer{% endif %} Selection
+                </div>
+                <div class="info-box-content">
+                    {{ team_filter_note }}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Team Member Selection Dropdown -->
+            <div class="form-group">
+                <label for="writer_id" class="form-label required">
+                    Assign to {% if allocation_type == 'process' %}Process Team Member{% else %}Writer{% endif %}
+                </label>
+                <select name="writer_id" id="writer_id" class="form-control" required>
+                    <option value="">-- Select {% if allocation_type == 'process' %}Process Team Member{% else %}Writer{% endif %} --</option>
+                    {% for member in writers %}
+                    <option value="{{ member.id }}">
+                        {{ member.name }}{% if member.employee_id %} ({{ member.employee_id }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="validation-message" id="writerError">
+                    Please select a {% if allocation_type == 'process' %}process team member{% else %}writer{% endif %}
+                </div>
+            </div>
+            
+            <!-- Start Date/Time -->
+            <div class="form-group">
+                <label for="start_datetime" class="form-label required">Start Date & Time (IST)</label>
+                <input 
+                    type="datetime-local" 
+                    name="start_datetime" 
+                    id="start_datetime" 
+                    class="form-control" 
+                    required
+                >
+                <div class="validation-message" id="startError">Please select start date and time</div>
+            </div>
+            
+            <!-- End Date/Time -->
+            <div class="form-group">
+                <label for="end_datetime" class="form-label required">End Date & Time (IST)</label>
+                <input 
+                    type="datetime-local" 
+                    name="end_datetime" 
+                    id="end_datetime" 
+                    class="form-control" 
+                    required
+                >
+                <div class="validation-message" id="endError">Please select end date and time</div>
+                <div class="deadline-warning" id="deadlineWarning" style="display: none;">
+                    ⚠️ The selected end date/time exceeds the expected deadline.
+                </div>
+            </div>
+            
+            <!-- Notes -->
+            <div class="form-group">
+                <label for="notes" class="form-label">Notes (Optional)</label>
+                <textarea 
+                    name="notes" 
+                    id="notes" 
+                    class="form-control" 
+                    placeholder="Add any additional instructions or notes for the {% if allocation_type == 'process' %}process team member{% else %}writer{% endif %}..."
+                ></textarea>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <a href="{% if allocation_type == 'process' %}{% url 'pending_allocation_process' %}{% else %}{% url 'pending_allocation' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary" onclick="submitAllocationForm(event)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polyline points="9 11 12 14 22 4" stroke="currentColor" stroke-width="2"/>
+                        <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    Confirm Allocation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+console.log("✅ Allocation form initialized");
+console.log("Allocation type: {{ allocation_type }}");
+
+// Expected deadline for validation
+const expectedDeadline = {% if expected_deadline %}new Date("{{ expected_deadline|date:'Y-m-d\TH:i:s' }}").getTime(){% else %}null{% endif %};
+
+// Set minimum datetime to current time
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("📋 Setting up form");
+    
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const minDateTime = now.toISOString().slice(0, 16);
+    
+    document.getElementById('start_datetime').min = minDateTime;
+    document.getElementById('end_datetime').min = minDateTime;
+    
+    console.log("✅ Min datetime set to:", minDateTime);
+});
+
+// Handle form submission
+function submitAllocationForm(event) {
+    event.preventDefault();
+    
+    console.log("🔵 Submit button clicked");
+    
+    const writerSelect = document.getElementById('writer_id');
+    const startInput = document.getElementById('start_datetime');
+    const endInput = document.getElementById('end_datetime');
+    
+    const writer_id = writerSelect.value;
+    const start_datetime = startInput.value;
+    const end_datetime = endInput.value;
+    const notes = document.getElementById('notes').value;
+    
+    console.log("📝 Form values:", {
+        writer_id,
+        start_datetime,
+        end_datetime,
+        notes
+    });
+    
+    // Validation
+    let errors = [];
+    
+    if (!writer_id) {
+        errors.push('❌ Please select a team member');
+        document.getElementById('writerError').classList.add('show');
+    } else {
+        document.getElementById('writerError').classList.remove('show');
+    }
+    
+    if (!start_datetime) {
+        errors.push('❌ Please select start date and time');
+        document.getElementById('startError').classList.add('show');
+    } else {
+        document.getElementById('startError').classList.remove('show');
+    }
+    
+    if (!end_datetime) {
+        errors.push('❌ Please select end date and time');
+        document.getElementById('endError').classList.add('show');
+    } else {
+        const startTime = new Date(start_datetime).getTime();
+        const endTime = new Date(end_datetime).getTime();
+        
+        if (endTime <= startTime) {
+            errors.push('❌ End date/time must be after start date/time');
+            document.getElementById('endError').textContent = 'End date/time must be after start date/time';
+            document.getElementById('endError').classList.add('show');
+        } else if (expectedDeadline && endTime > expectedDeadline) {
+            errors.push('❌ End date/time exceeds expected deadline');
+            document.getElementById('endError').textContent = 'End date/time must be before expected deadline';
+            document.getElementById('endError').classList.add('show');
+        } else {
+            document.getElementById('endError').classList.remove('show');
+        }
+    }
+    
+    if (errors.length > 0) {
+        console.log("⚠️ Validation errors found:");
+        errors.forEach(err => console.log(err));
+        
+        const firstError = document.querySelector('.validation-message.show');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+    }
+    
+    console.log("✅ All validations passed - submitting form");
+    
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Submitting...</span>';
+    
+    document.getElementById('allocationForm').submit();
+    
+    console.log("📤 Form submitted to server");
+    return false;
+}
+</script>
+{% endblock %}

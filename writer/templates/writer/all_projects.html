@@ -1,0 +1,545 @@
+<!-- writer/templates/writer/all_projects.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}All Projects - Writer{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+    <h1 class="dashboard-title">All Projects</h1>
+    <p class="dashboard-subtitle">View and manage all your assigned projects</p>
+</div>
+<!-- Filters -->
+<div class="card" style="margin-bottom: var(--spacing-lg);">
+    <div class="card-body">
+        <form method="GET" class="form-row" style="align-items: flex-end;">
+            <!-- Search -->
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Search</label>
+                <input type="text" 
+                       name="search" 
+                       value="{{ search_query }}" 
+                       class="form-control" 
+                       placeholder="Search by System ID or Topic...">
+            </div>
+            
+            <!-- Status Filter -->
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control form-select">
+                    <option value="">All Status</option>
+                    {% for value, label in STATUS_CHOICES %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Buttons -->
+            <div class="btn-group" style="margin-bottom: 0;">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Filter
+                </button>
+                <a href="{% url 'all_projects' %}" class="btn btn-outline">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Projects Table -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Projects List ({{ projects|length }})</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Topic</th>
+                        <th>Word Count</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Referencing</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td>
+                            <span style="font-weight: 600; color: var(--primary);">
+                                {{ project.system_id }}
+                            </span>
+                        </td>
+                        <td>
+                            <span style="max-width: 250px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.topic }}">
+                                {{ project.topic|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span style="font-weight: 600;">
+                                {{ project.word_count|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span>
+                                {{ project.start_date|date:"d M Y, h:i A"|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span>
+                                {{ project.end_date|date:"d M Y, h:i A"|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span style="text-transform: uppercase; font-weight: 600; color: var(--secondary);">
+                                {{ project.referencing_style|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if project.status == 'pending' %}
+                            <span class="status-tag status-pending">Pending</span>
+                            {% elif project.status == 'in_progress' %}
+                            <span class="status-tag status-in-progress">In Progress</span>
+                            {% elif project.status == 'completed' %}
+                            <span class="status-tag status-completed">Completed</span>
+                            {% elif project.status == 'hold' %}
+                            <span class="status-tag status-hold">Hold</span>
+                            {% elif project.status == 'Review' %}
+                            <span class="status-tag status-allocated">Review</span>
+                            {% elif project.status == 'allocated' %}
+                            <span class="status-tag status-allocated">Allocated</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button onclick="openProjectModal('{{ project.system_id }}')" class="btn btn-primary" style="padding: 6px 16px; font-size: 13px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 3rem;">
+                            <div style="opacity: 0.6;">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 1rem; opacity: 0.3;">
+                                    <path d="M22 19C22 19.5304 21.7893 20.0391 21.4142 20.4142C21.0391 20.7893 20.5304 21 20 21H4C3.46957 21 2.96086 20.7893 2.58579 20.4142C2.21071 20.0391 2 19.5304 2 19V5C2 4.46957 2.21071 3.96086 2.58579 3.58579C2.96086 3.21071 3.46957 3 4 3H9L11 6H20C20.5304 6 21.0391 6.21071 21.4142 6.58579C21.7893 6.96086 22 7.46957 22 8V19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <p style="font-size: 18px; font-weight: 600; margin-bottom: 0.5rem;">No Projects Found</p>
+                                <p style="font-size: 14px;">You don't have any projects {% if status_filter %}with this status{% endif %} yet.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Project Detail Modal -->
+<div id="projectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Project Details</h2>
+            <span class="close" onclick="closeProjectModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+<style>
+    .data-table tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: rgba(183, 153, 255, 0.15);
+        transform: scale(1.01);
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .modal-content {
+        background-color: #fff;
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 1000px;
+        max-height: 90vh;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.3s;
+    }
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    .modal-header {
+        padding: 20px 30px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+    }
+    .modal-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+    }
+    .close {
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        line-height: 1;
+    }
+    .close:hover {
+        transform: rotate(90deg);
+    }
+    .modal-body {
+        padding: 30px;
+        max-height: calc(90vh - 80px);
+        overflow-y: auto;
+    }
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        font-size: 18px;
+        color: var(--primary);
+    }
+    .detail-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+    }
+    .detail-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: var(--primary);
+        font-size: 18px;
+        font-weight: 600;
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .detail-value {
+        color: #333;
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .attachment-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0 0;
+    }
+    .attachment-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: white;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+        border: 1px solid #e0e0e0;
+    }
+    .attachment-item:hover {
+        background: #f0f0f0;
+        border-color: var(--primary);
+    }
+    .attachment-info {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+    }
+    .attachment-icon {
+        margin-right: 12px;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+    .attachment-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+    .attachment-name {
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .attachment-size {
+        color: #999;
+        font-size: 12px;
+        margin-top: 2px;
+    }
+    .attachment-download {
+        margin-left: 15px;
+        flex-shrink: 0;
+    }
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+    .download-btn:hover {
+        background: var(--secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .download-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .status-allocated { background: #e3f2fd; color: #1976d2; }
+    .status-in-progress { background: #fff3e0; color: #f57c00; }
+    .status-completed { background: #e8f5e9; color: #388e3c; }
+    .status-hold { background: #fce4ec; color: #c2185b; }
+    .status-review { background: #f3e5f5; color: #7b1fa2; }
+    
+    .error-message {
+        text-align: center;
+        padding: 40px;
+        color: #d32f2f;
+        font-size: 16px;
+    }
+</style>
+<script>
+function openProjectModal(systemId) {
+    const modal = document.getElementById('projectModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    modal.style.display = 'block';
+    modalBody.innerHTML = '<div class="loading-spinner">Loading project details...</div>';
+    
+    // Fetch project details via AJAX
+    fetch(`/writer/project-detail-ajax/${systemId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                modalBody.innerHTML = buildModalContent(data);
+            } else {
+                modalBody.innerHTML = '<div class="error-message">Error loading project details.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            modalBody.innerHTML = '<div class="error-message">Error loading project details.</div>';
+        });
+}
+function closeProjectModal() {
+    document.getElementById('projectModal').style.display = 'none';
+}
+function buildModalContent(data) {
+    const job = data.job;
+    const allocation = data.allocation;
+    const attachments = data.attachments;
+    
+    let html = `
+        <!-- Job Information -->
+        <div class="detail-section">
+            <h3>📋 Job Information</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Job ID</span>
+                    <span class="detail-value">${job.system_id}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-${job.status.toLowerCase().replace('_', '-')}">${job.status_display}</span>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Category</span>
+                    <span class="detail-value">${job.category || 'N/A'}</span>
+                </div>
+            </div>
+        </div>
+        <!-- Project Details -->
+        <div class="detail-section">
+            <h3>📝 Project Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Topic</span>
+                    <span class="detail-value">${job.topic || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Word Count</span>
+                    <span class="detail-value">${job.word_count || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Referencing Style</span>
+                    <span class="detail-value">${job.referencing_style_display || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Writing Style</span>
+                    <span class="detail-value">${job.writing_style_display || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Software</span>
+                    <span class="detail-value">${job.software || 'N/A'}</span>
+                </div>
+            </div>
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Instructions</span>
+                <span class="detail-value">${job.instruction || 'N/A'}</span>
+            </div>
+        </div>
+        <!-- Allocation Details -->
+        <div class="detail-section">
+            <h3>👤 Allocation Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Allocated By</span>
+                    <span class="detail-value">${allocation.allocated_by_name}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Start Date</span>
+                    <span class="detail-value">${allocation.start_date}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">End Date</span>
+                    <span class="detail-value">${allocation.end_date}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Allocated At</span>
+                    <span class="detail-value">${allocation.allocated_at}</span>
+                </div>
+            </div>
+            ${allocation.notes ? `
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Notes</span>
+                <span class="detail-value">${allocation.notes}</span>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    // Add attachments section if there are any
+    if (attachments && attachments.length > 0) {
+        html += `
+        <div class="detail-section">
+            <h3>📎 Attachments (${attachments.length})</h3>
+            <ul class="attachment-list">
+        `;
+        
+        attachments.forEach(attachment => {
+            html += `
+                <li class="attachment-item">
+                    <div class="attachment-info">
+                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13 2V9H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <div class="attachment-details">
+                            <span class="attachment-name" title="${attachment.original_filename}">${attachment.original_filename}</span>
+                            <span class="attachment-size">${attachment.file_size}</span>
+                        </div>
+                    </div>
+                    <div class="attachment-download">
+                        <a href="${attachment.file_url}" download class="download-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Download
+                        </a>
+                    </div>
+                </li>
+            `;
+        });
+        
+        html += `
+            </ul>
+        </div>
+        `;
+    }
+    return html;
+}
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('projectModal');
+    if (event.target == modal) {
+        closeProjectModal();
+    }
+}
+</script>
+{% endblock %}

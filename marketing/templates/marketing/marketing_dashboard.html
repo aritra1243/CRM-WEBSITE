@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketing Dashboard - CRM Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1 class="dashboard-title">Marketing Dashboard</h1>
+    <p class="dashboard-subtitle">Welcome back, {{ user.get_full_name }}! | {{ today_date|date:"l, F d, Y" }}</p>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_jobs }}</div>
+        <div class="stat-label">Total Jobs</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #F48FB1 0%, #E91E63 100%);">
+        <div class="stat-value">{{ stats.pending_jobs }}</div>
+        <div class="stat-label">Pending Jobs</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #AB47BC 0%, #9C27B0 100%);">
+        <div class="stat-value">{{ stats.allocated_jobs }}</div>
+        <div class="stat-label">Allocated Jobs</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);">
+        <div class="stat-value">{{ stats.completed_jobs }}</div>
+        <div class="stat-label">Completed Jobs</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
+        <div class="stat-value">{{ stats.hold_jobs }}</div>
+        <div class="stat-label">On Hold</div>
+    </div>
+    
+    <div class="stat-card" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+        <div class="stat-value">{{ stats.query_jobs }}</div>
+        <div class="stat-label">Query Jobs</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">Quick Actions</h2>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <a href="{% url 'create_job' %}" class="btn btn-primary" style="text-decoration: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                Create job with AI Summary
+            </a>
+            <a href="{% url 'create_manual_job' %}" class="btn btn-secondary" style="text-decoration: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="10" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="10" y1="17" x2="14" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Create Job (Manual Entry)
+            </a>
+    
+
+
+            
+            <a href="{% url 'my_jobs' %}" class="btn btn-outline" style="text-decoration: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                View My Jobs
+            </a>
+            
+            <a href="{% url 'unallocated_jobs' %}" class="btn btn-outline" style="text-decoration: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Unallocated Jobs
+            </a>
+            
+            <a href="{% url 'query_jobs' %}" class="btn btn-outline" style="text-decoration: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                    <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Query Jobs
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Draft Jobs Table -->
+{% if draft_jobs %}
+<div class="card mb-4">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 class="card-title" style="margin: 0;">Draft Jobs</h2>
+        <span class="status-tag status-pending">{{ draft_jobs.count }} Draft{{ draft_jobs.count|pluralize }}</span>
+    </div>
+
+    <div class="card-body">
+        {% if draft_jobs %}
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SL No</th>
+                            <th>System ID</th>
+                            <th>Job ID</th>                           
+                            <th>Topic</th>
+                            <th>Word Count</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in draft_jobs %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td><strong>{{ job.system_id }}</strong></td>
+                            <td>#{{ job.job_id }}</td>
+                            <td>{{ job.topic|default:"Not Generated" }}</td>
+                            <td>{{ job.word_count|default:"-" }}</td>
+                            <td>{{ job.writing_style|title|default:"-" }}</td>
+                            <td><span class="status-tag status-pending">Draft</span></td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'view_job_details' job.system_id %}" class="btn btn-outline" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">View</a>
+
+                                    {% if job.status == 'draft' %}
+                                    <a href="{% url 'create_job' %}?job_id={{ job.system_id }}" class="btn btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Edit</a>
+                                    {% elif job.status == 'pending' %}
+                                    <a href="{% url 'final_job_form' system_id=job.system_id %}" class="btn btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Complete</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+
+<!-- Recent Activities -->
+<div class="card mb-4">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <h2 class="card-title" style="margin: 0;">Recent Activities</h2>
+        <div class="table-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; width: 100%; margin-top: 0.5rem;">
+            <input type="text" id="recentSearch" class="form-control" placeholder="Search by System ID, Job ID, or Topic">
+            <select id="recentStatus" class="form-control">
+                <option value="">All Statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select id="recentCategory" class="form-control">
+                <option value="">All Categories</option>
+                {% for value, label in category_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-primary" type="button" onclick="applyRecentFilters()">Search</button>
+                <button class="btn btn-outline" type="button" onclick="resetRecentFilters()">Reset</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if recent_activities %}
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SL No</th>
+                            <th>System ID</th>
+                            <th>Job ID</th>
+                            <th>Customer ID</th>
+                            <th>Topic</th>
+                            <th>Word Count</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in recent_activities %}
+                        <tr data-recent-row data-status="{{ activity.status|default:'' }}" data-category="{{ activity.category|default:'' }}" data-search="{{ activity.system_id|default:'' }} {{ activity.job_id|default:'' }} {{ activity.customer_id|default:'' }} {{ activity.topic|default:'' }}">
+                            <td>{{ forloop.counter }}</td>
+                            <td><strong>{{ activity.system_id }}</strong></td>
+                            <td>#{{ activity.job_id }}</td>
+                            <td>{{ activity.customer_id|default:"-" }}</td>
+                            <td>{{ activity.topic|truncatewords:8 }}</td>
+                            <td>{{ activity.word_count|default:"-" }}</td>
+                            <!-- <td>{{ activity.deadline|date:"d/m/Y"|default:"-" }}</td> -->
+                             <td>{{ activity.expected_deadline|date:"d/m/Y"|default:"-" }}</td>
+                            <td>
+                                <span class="status-tag status-{{ activity.status|lower }}">
+                                    {{ activity.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ activity.get_category_display|default:"-" }}</td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    {% if activity.status == 'draft' %}
+                                    <a href="{% url 'create_job' %}?job_id={{ activity.system_id }}" class="btn btn-outline" style="padding:0.4rem 0.9rem; font-size:0.85rem;">Edit</a>
+
+                                    {% elif activity.status == 'pending' %}
+                                    <a href="{% url 'final_job_form' system_id=activity.system_id %}" class="btn btn-outline" style="padding:0.4rem 0.9rem; font-size:0.85rem;">Final Step</a>
+
+                                    {% else %}
+                                    <a href="{% url 'view_job_details' activity.system_id %}" class="btn btn-outline" style="padding:0.4rem 0.9rem; font-size:0.85rem;">View</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 4rem 2rem; color: var(--text-color); opacity:0.6;">
+                <h3 style="font-size:1.2rem; margin-bottom:0.5rem;">No Recent Activities</h3>
+                <p style="font-size:0.9rem;">Your recent activities will appear here</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+
+<script>
+    // Recent Activities filter (client-side; no page reload)
+    function applyRecentFilters() {
+        const searchTerm = (document.getElementById('recentSearch').value || '').toLowerCase();
+        const statusFilter = (document.getElementById('recentStatus').value || '').toLowerCase();
+        const categoryFilter = (document.getElementById('recentCategory').value || '').toLowerCase();
+
+        const rows = document.querySelectorAll('[data-recent-row]');
+        rows.forEach(row => {
+            const rowSearch = (row.dataset.search || '').toLowerCase();
+            const rowStatus = (row.dataset.status || '').toLowerCase();
+            const rowCategory = (row.dataset.category || '').toLowerCase();
+
+            // OR across System ID / Job ID / Topic via combined search string
+            const matchesSearch = !searchTerm || rowSearch.includes(searchTerm);
+            const matchesStatus = !statusFilter || rowStatus === statusFilter;
+            const matchesCategory = !categoryFilter || rowCategory === categoryFilter;
+
+            row.style.display = (matchesSearch && matchesStatus && matchesCategory) ? '' : 'none';
+        });
+    }
+
+    function resetRecentFilters() {
+        document.getElementById('recentSearch').value = '';
+        document.getElementById('recentStatus').value = '';
+        document.getElementById('recentCategory').value = '';
+        applyRecentFilters();
+    }
+
+
+
+
+
+
+</script>
+
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn {
+        transition: all 0.3s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .card, .stat-card {
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { animation-delay: 0.6s; }
+</style>
+{% endblock %}

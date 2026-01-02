@@ -1,0 +1,860 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Customer Management - CRM Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* -----------------------------
+   CUSTOMER PAGE — EXTRA CSS ONLY
+   ----------------------------- */
+
+/* Form Panel */
+.customer-form-panel {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--spacing-xl);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+/* Form Header */
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Collapse Button */
+.collapse-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-color);
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    transition: all 0.2s ease;
+}
+
+.collapse-btn[aria-expanded="true"] {
+    background: var(--gradient-primary);
+    color: #0a0a0f;
+    border-color: transparent;
+}
+
+/* Form Body */
+.form-body {
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+.form-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    pointer-events: none;
+}
+
+/* Stat Cards (Use Marketing Theme Gradient) */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.stat-card {
+    background: var(--gradient-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.stat-label {
+    font-size: 13px;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+}
+
+/* KPI Row Expand Section */
+.kpi-row {
+    display: none;
+    background: var(--gradient-primary);
+}
+.kpi-row.active {
+    display: table-row;
+}
+
+.kpi-content {
+    padding: var(--spacing-lg);
+}
+
+/* KPI Cards (Marketing Theme) */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.kpi-card {
+    background-color: var(--card-bg);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+}
+
+.kpi-card h4 {
+    font-size: 14px;
+    text-transform: uppercase;
+    color: var(--secondary);
+    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.5px;
+}
+
+.kpi-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.kpi-item:last-child {
+    border-bottom: none;
+}
+.kpi-label {
+    opacity: 0.8;
+}
+.kpi-value {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* Category Badges */
+.category-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.category-badge.it {
+    background-color: rgba(214, 120, 156, 0.25);
+    color: #ffb3d2;
+}
+.category-badge.non-it {
+    background-color: rgba(200, 162, 240, 0.25);
+    color: #d8b6ff;
+}
+.category-badge.finance {
+    background-color: rgba(239, 183, 196, 0.25);
+    color: #ffc8d5;
+}
+/* Fixed Toggle Switch – Matching Base.css + Marketing Theme */
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 22px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.25);
+    transition: 0.25s ease;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-color);
+    border-radius: 50%;
+    transition: 0.25s ease;
+}
+
+/* When checked */
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary); /* Theme-marketing primary */
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+
+/* Search Bar */
+.table-filters {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-md);
+}
+.search-bar {
+    position: relative;
+    width: min(360px, 100%);
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+    border-radius: 14px;
+    padding: 2px;
+}
+.search-bar input {
+    width: 100%;
+    padding: 12px 44px 12px 16px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: var(--text-color);
+}
+.search-bar .icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 15px;
+}
+
+/* Expand Button */
+.expand-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: var(--text-color);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease;
+}
+.expand-btn:hover {
+    border-color: rgba(255, 255, 255, 0.45);
+}
+.expand-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* Form Error */
+.form-error {
+    color: #FF6B6B;
+    font-size: 13px;
+    margin-top: 4px;
+    display: none;
+}
+.form-error.active {
+    display: block;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Clickable Row */
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.clickable-row:hover {
+    background-color: var(--hover-bg);
+}
+.clickable-row.expanded {
+    background-color: rgba(214, 120, 156, 0.15);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+
+        <div>
+            <h1 class="dashboard-title">Customer Management</h1>
+            <p class="dashboard-subtitle">Manage your customer database and track their project KPIs</p>
+        </div>
+
+        <a href="{% url 'marketing_dashboard' %}" class="btn btn-outline">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 12H5M5 12L12 19M5 12L12 5"
+                    stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back to Dashboard
+        </a>
+
+    </div>
+</div>
+
+
+<!-- Customer Statistics -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">Customer KPIs</h2>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_customers }}</div>
+                <div class="stat-label">Total Customers</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);">
+                <div class="stat-value">{{ active_customers }}</div>
+                <div class="stat-label">Active Customers</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f83600 0%, #fe8c00 100%);">
+                <div class="stat-value">{{ inactive_customers }}</div>
+                <div class="stat-label">Inactive Customers</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Form Panel -->
+<div class="customer-form-panel card" id="customerFormPanel">
+    <div class="form-header card-header" onclick="toggleCustomerForm()">
+        <h2 class="form-title" style="margin:0;">Add New Customer</h2>
+        <button type="button" class="collapse-btn" aria-expanded="false">
+            <span id="formToggleIcon">+</span>
+        </button>
+    </div>
+    <div class="form-body card-body collapsed" id="customerFormBody">
+        <form id="customerForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Customer Name</label>
+                    <input type="text" class="form-control" id="customer_name" name="customer_name" 
+                           placeholder="Enter customer name" minlength="3" required>
+                    <div class="form-error" id="error_customer_name"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Customer Email</label>
+                    <input type="email" class="form-control" id="customer_email" name="customer_email" 
+                           placeholder="customer@example.com" required>
+                    <div class="form-error" id="error_customer_email"></div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Phone Number</label>
+                    <input type="tel" class="form-control" id="customer_phone" name="customer_phone" 
+                           placeholder="10-digit phone number" pattern="[0-9]{10}" maxlength="10" required>
+                    <div class="form-error" id="error_customer_phone"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Targeted Amount (INR)</label>
+                    <input type="number" class="form-control" id="targeted_amount" name="targeted_amount" 
+                           placeholder="Enter target amount" min="1" step="0.01" required>
+                    <div class="form-error" id="error_targeted_amount"></div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span id="btnText">Add Customer</span>
+                    <span id="btnLoader" class="loading-spinner" style="display: none;"></span>
+                </button>
+                <button type="reset" class="btn btn-outline">Reset Form</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Customer Table -->
+<div class="card">
+    <div class="card-header" style="display:flex; justify-content: space-between; align-items:center;">
+        <h2 class="card-title" style="margin:0;">Customers</h2>
+        <div class="table-filters">
+            <div class="search-bar">
+                <input type="text" id="searchCustomer" placeholder="Search by ID or name...">
+                <!-- <span class="icon">&#128270;</span> -->
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-container table-scroll-lock">
+            <div class="table-scroll-body">
+                <table class="data-table" id="customerTable" data-page-size="15">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Customer ID</th>
+                            <th>Customer Name</th>
+                            <th>Email ID</th>
+                            <th>Phone No</th>
+                            <th>Target Amount (₹)</th>
+                            <th>Current Amount (₹)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody">
+                        {% for customer in customers %}
+                        <tr class="clickable-row" data-customer-id="{{ customer.customer_id }}" data-customer-name="{{ customer.customer_name|lower }}">
+                            <td data-label="Expand">
+                                <button type="button" class="expand-btn" onclick="toggleKPIRow('{{ customer.customer_id }}', this); event.stopPropagation();">+</button>
+                            </td>
+                            <td data-label="Customer ID">{{ customer.customer_id }}</td>
+                            <td data-label="Customer Name">{{ customer.customer_name }}</td>
+                            <td data-label="Email ID">{{ customer.customer_email }}</td>
+                            <td data-label="Phone No">{{ customer.customer_phone }}</td>
+                            <td data-label="Target Amount">₹{{ customer.targeted_amount|default_if_none:"0"|floatformat:2 }}</td>
+                            <td data-label="Current Amount">₹{{ customer.current_amount|default_if_none:"0"|floatformat:2 }}</td>
+                            <td data-label="Action">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" {% if customer.is_active %}checked{% endif %}
+                                           onchange="toggleCustomerStatus('{{ customer.customer_id }}', this)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr class="kpi-row" id="kpi-{{ customer.customer_id }}">
+                            <td colspan="8">
+                                <div class="kpi-content">
+                                    <div class="loading-state">Loading KPIs...</div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">
+                                <div class="empty-state">
+                                    <p>No customers found</p>
+                                    <p>Add your first customer using the form above</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Form submission
+document.getElementById('customerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Clear previous errors
+    document.querySelectorAll('.form-error').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.form-control').forEach(el => el.style.borderColor = '');
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'inline-block';
+    
+    const formData = {
+        customer_name: document.getElementById('customer_name').value.trim(),
+        customer_email: document.getElementById('customer_email').value.trim(),
+        customer_phone: document.getElementById('customer_phone').value.trim(),
+        targeted_amount: document.getElementById('targeted_amount').value.trim(),
+    };
+    
+    try {
+        const response = await fetch('{% url "add_customer" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success message
+            showNotification(data.message, 'success');
+            
+            // Add customer to table
+            addCustomerToTable(data.customer);
+            
+            // Reset form
+            document.getElementById('customerForm').reset();
+            // Collapse form after successful add
+            toggleCustomerForm(true);
+            
+            // Refresh table behaviors
+            if (window.refreshTableBehaviors) {
+                window.refreshTableBehaviors();
+            }
+        } else {
+            // Show errors
+            if (data.errors) {
+                for (const [field, message] of Object.entries(data.errors)) {
+                    const errorEl = document.getElementById(`error_${field}`);
+                    const inputEl = document.getElementById(field);
+                    if (errorEl && inputEl) {
+                        errorEl.textContent = message;
+                        errorEl.classList.add('active');
+                        inputEl.style.borderColor = '#FF6B6B';
+                    }
+                }
+            } else {
+                showNotification(data.message || 'Error adding customer', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Network error. Please try again.', 'error');
+    } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+    }
+});
+
+// Add customer to table dynamically
+function addCustomerToTable(customer) {
+    const tbody = document.getElementById('customerTableBody');
+    
+    // Remove empty state if exists
+    const emptyState = tbody.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.closest('tr').remove();
+    }
+    
+    const row = document.createElement('tr');
+    row.className = 'clickable-row';
+    row.setAttribute('data-customer-id', customer.customer_id);
+    row.setAttribute('data-customer-name', customer.customer_name.toLowerCase());
+    row.innerHTML = `
+        <td data-label="Expand">
+            <button type="button" class="expand-btn" onclick="toggleKPIRow('${customer.customer_id}', this); event.stopPropagation();">+</button>
+        </td>
+        <td data-label="Customer ID">${customer.customer_id}</td>
+        <td data-label="Customer Name">${customer.customer_name}</td>
+        <td data-label="Email ID">${customer.customer_email}</td>
+        <td data-label="Phone No">${customer.customer_phone}</td>
+        <td data-label="Target Amount">₹${parseFloat(customer.targeted_amount).toFixed(2)}</td>
+        <td data-label="Current Amount">₹${parseFloat(customer.current_amount).toFixed(2)}</td>
+        <td data-label="Action">
+            <label class="toggle-switch">
+                <input type="checkbox" ${customer.is_active ? 'checked' : ''}
+                       onchange="toggleCustomerStatus('${customer.customer_id}', this)">
+                <span class="toggle-slider"></span>
+            </label>
+        </td>
+    `;
+    
+    const kpiRow = document.createElement('tr');
+    kpiRow.className = 'kpi-row';
+    kpiRow.id = `kpi-${customer.customer_id}`;
+    kpiRow.innerHTML = `
+        <td colspan="8">
+            <div class="kpi-content">
+                <div class="loading-state">Loading KPIs...</div>
+            </div>
+        </td>
+    `;
+    
+    tbody.insertBefore(row, tbody.firstChild);
+    tbody.insertBefore(kpiRow, row.nextSibling);
+    
+    // Add click listener
+    row.addEventListener('click', function(e) {
+        if (!e.target.closest('.toggle-switch') && !e.target.closest('.expand-btn')) {
+            toggleKPIRow(customer.customer_id, row.querySelector('.expand-btn'));
+        }
+    });
+}
+
+// Toggle customer status
+async function toggleCustomerStatus(customerId, checkbox) {
+    try {
+        const response = await fetch('{% url "toggle_customer_status" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ customer_id: customerId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            checkbox.checked = data.is_active;
+        } else {
+            showNotification(data.message, 'error');
+            checkbox.checked = !checkbox.checked;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error updating customer status', 'error');
+        checkbox.checked = !checkbox.checked;
+    }
+}
+
+// Toggle KPI row
+let currentExpandedRow = null;
+
+async function toggleKPIRow(customerId, btnEl = null) {
+    const row = document.querySelector(`tr[data-customer-id="${customerId}"]`);
+    const kpiRow = document.getElementById(`kpi-${customerId}`);
+    const btn = btnEl || (row ? row.querySelector('.expand-btn') : null);
+    
+    // Close previous row if different
+    if (currentExpandedRow && currentExpandedRow !== customerId) {
+        const prevRow = document.querySelector(`tr[data-customer-id="${currentExpandedRow}"]`);
+        const prevKpiRow = document.getElementById(`kpi-${currentExpandedRow}`);
+        if (prevRow) prevRow.classList.remove('expanded');
+        if (prevKpiRow) prevKpiRow.classList.remove('active');
+        const prevBtn = prevRow ? prevRow.querySelector('.expand-btn') : null;
+        if (prevBtn) {
+            prevBtn.textContent = '+';
+            prevBtn.classList.remove('active');
+        }
+    }
+    
+    // Toggle current row
+    if (row.classList.contains('expanded')) {
+        row.classList.remove('expanded');
+        kpiRow.classList.remove('active');
+        kpiRow.style.display = 'none';
+        if (btn) {
+            btn.textContent = '+';
+            btn.classList.remove('active');
+        }
+        currentExpandedRow = null;
+    } else {
+        row.classList.add('expanded');
+        kpiRow.classList.add('active');
+        kpiRow.style.display = 'table-row';
+        if (btn) {
+            btn.textContent = '−';
+            btn.classList.add('active');
+        }
+        currentExpandedRow = customerId;
+        
+        // Load KPIs
+        await loadCustomerKPIs(customerId);
+        // Ensure the expanded row is in view (useful for last row)
+        scrollRowIntoView(kpiRow);
+    }
+}
+
+function scrollRowIntoView(rowEl) {
+    if (!rowEl) return;
+    const container = rowEl.closest('.table-scroll-body');
+    if (!container) return;
+    const rowTop = rowEl.offsetTop;
+    const rowBottom = rowTop + rowEl.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+    const buffer = 48; // extra breathing room
+
+    if (rowTop - buffer < viewTop || rowBottom + buffer > viewBottom) {
+        const target = Math.max(rowTop - buffer, 0);
+        container.scrollTo({ top: target, behavior: 'smooth' });
+    }
+}
+
+// Load customer KPIs
+async function loadCustomerKPIs(customerId) {
+    const kpiContent = document.querySelector(`#kpi-${customerId} .kpi-content`);
+    kpiContent.innerHTML = '<div class="loading-state">Loading KPIs...</div>';
+    
+    try {
+        const response = await fetch(`/marketing/customers/${customerId}/kpis/`);
+        const data = await response.json();
+        
+        if (data.success) {
+            kpiContent.innerHTML = renderKPIs(data.kpis);
+        } else {
+            kpiContent.innerHTML = '<div class="empty-state compact">Error loading KPIs</div>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        kpiContent.innerHTML = '<div class="empty-state compact">Failed to load KPIs</div>';
+    }
+}
+
+// Render KPIs
+function renderKPIs(kpis) {
+    return `
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <h4>Project KPIs</h4>
+                <div class="kpi-item">
+                    <span class="kpi-label">Total Projects</span>
+                    <span class="kpi-value">${kpis.project_kpis.total_projects}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Completed</span>
+                    <span class="kpi-value">${kpis.project_kpis.completed_projects}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Cancelled</span>
+                    <span class="kpi-value">${kpis.project_kpis.cancelled_projects}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">With Issues</span>
+                    <span class="kpi-value">${kpis.project_kpis.projects_with_issues}</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <h4>Financial KPIs</h4>
+                <div class="kpi-item">
+                    <span class="kpi-label">Total Order Amount</span>
+                    <span class="kpi-value">₹${parseFloat(kpis.financial_kpis.total_order_amount).toFixed(2)}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Total Paid</span>
+                    <span class="kpi-value">₹${parseFloat(kpis.financial_kpis.total_paid_amount).toFixed(2)}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Remaining Due</span>
+                    <span class="kpi-value">₹${parseFloat(kpis.financial_kpis.remaining_amount).toFixed(2)}</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <h4>Category Breakdown</h4>
+                <div class="category-badges">
+                    <div class="category-badge it">
+                        <span>IT: ${kpis.category_breakdown.it_projects}</span>
+                    </div>
+                    <div class="category-badge non-it">
+                        <span>Non-IT: ${kpis.category_breakdown.non_it_projects}</span>
+                    </div>
+                    <div class="category-badge finance">
+                        <span>Finance: ${kpis.category_breakdown.finance_projects}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Add click listeners to existing rows
+document.addEventListener('DOMContentLoaded', function() {
+    // Keep form collapsed by default
+    toggleCustomerForm(true);
+    
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (!e.target.closest('.toggle-switch') && !e.target.closest('.expand-btn')) {
+                const customerId = this.getAttribute('data-customer-id');
+                toggleKPIRow(customerId, row.querySelector('.expand-btn'));
+            }
+        });
+    });
+    
+    const searchCustomer = document.getElementById('searchCustomer');
+    searchCustomer.addEventListener('input', filterCustomers);
+});
+
+function filterCustomers() {
+    const term = document.getElementById('searchCustomer').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#customerTableBody .clickable-row');
+    
+    rows.forEach(row => {
+        const cid = row.dataset.customerId.toLowerCase();
+        const cname = row.dataset.customerName.toLowerCase();
+        const show = !term || cid.includes(term) || cname.includes(term);
+        row.style.display = show ? '' : 'none';
+        const kpiRow = document.getElementById(`kpi-${row.dataset.customerId}`);
+        if (kpiRow) {
+            kpiRow.style.display = show ? '' : 'none';
+        }
+        if (!show && row.classList.contains('expanded')) {
+            row.classList.remove('expanded');
+            if (kpiRow) kpiRow.classList.remove('active');
+            const btn = row.querySelector('.expand-btn');
+            if (btn) {
+                btn.textContent = '+';
+                btn.classList.remove('active');
+            }
+            currentExpandedRow = null;
+        }
+    });
+}
+
+function toggleCustomerForm(forceCollapse = null) {
+    const body = document.getElementById('customerFormBody');
+    const icon = document.getElementById('formToggleIcon');
+    const btn = document.querySelector('.collapse-btn');
+    const isCollapsed = body.classList.contains('collapsed');
+    const shouldCollapse = forceCollapse === null ? !isCollapsed : forceCollapse;
+    
+    if (shouldCollapse) {
+        body.classList.add('collapsed');
+        body.style.maxHeight = '0px';
+        body.style.opacity = '0';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (icon) icon.textContent = '+';
+    } else {
+        body.classList.remove('collapsed');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        body.style.opacity = '1';
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        if (icon) icon.textContent = '−';
+    }
+}
+</script>
+{% endblock %}

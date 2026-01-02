@@ -1,0 +1,874 @@
+﻿<!-- manage_users.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Manage Users - SuperAdmin{% endblock %}
+{% block body_class %}theme-superadmin-3{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+    <h1 class="dashboard-title">Manage Users</h1>
+    <p class="dashboard-subtitle">View and manage all registered users.</p>
+</div>
+
+{% if messages %}
+<div class="alert-stack">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message|safe }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- KPI Cards -->
+<div class="stats-grid">
+    <a href="{% url 'superadmin:manage_users' %}" class="stat-card gradient-primary kpi-card-link"
+        title="View all approved users">
+        <div class="stat-value">{{ total_users }}</div>
+        <div class="stat-label">Number of Users</div>
+    </a>
+
+    <a href="{% url 'superadmin:pending_items' %}" class="stat-card gradient-warning kpi-card-link"
+        title="Review pending approvals and profile requests">
+        <div class="stat-value">{{ pending_count }}</div>
+        <div class="stat-label">Number of Pending</div>
+    </a>
+
+    <a href="{% url 'superadmin:manage_users' %}" class="stat-card gradient-success kpi-card-link"
+        title="See approved user list">
+        <div class="stat-value">{{ approved_count }}</div>
+        <div class="stat-label">Number of Approvals</div>
+    </a>
+</div>
+
+<!-- Users Table -->
+<div class="card mt-4">
+    <div class="card-header"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; background-color: #2a2a2a; border: 1px solid #444; border-radius: 4px; margin-bottom: 15px;">
+        <h3 class="card-title" style="color: #fff; margin: 0;">All Users</h3>
+        <div style="display: flex; gap: 1rem;">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search users..."
+                style="width: 300px; background-color: #3a3a3a; color: #fff; border-color: #555;"
+                onfocus="this.style.backgroundColor='#454545'">
+            <button type="button" class="btn btn-primary" onclick="openModal('addUserModal')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                Add User
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-container table-scroll-lock">
+            <table class="data-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>SL. No</th>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Update Role</th>
+                        <th>Current Role</th>
+                        <th>Category</th>
+                        <th>Specialisation</th>
+                        <th>Level</th>
+                        <th>Organisation</th>
+                        <th>Action</th>
+                        <th>Profile Status</th>
+                        <th>Generate Password</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr data-user-id="{{ user.id }}">
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ user.employee_id|default:'Not Assigned' }}</td>
+                        <td style="font-weight: 600;" data-column="name">{{ user.get_full_name }}</td>
+                        <td data-column="email">{{ user.email }}</td>
+
+                        <!-- Update Role -->
+                        <td>
+                            <form method="POST" action="{% url 'superadmin:update_user_role' user.id %}"
+                                style="display: flex; gap: 0.5rem; align-items: center;">
+                                {% csrf_token %}
+                                <select name="role" class="form-control form-select"
+                                    style="width: 150px; padding: 6px 12px; font-size: 13px;" data-role-select>
+                                    <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
+                                    <option value="superadmin" {% if user.role == 'superadmin' %}selected{% endif %}>
+                                        SuperAdmin
+                                    </option>
+                                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                                    <option value="marketing" {% if user.role == 'marketing' %}selected{% endif %}>
+                                        Marketing
+                                    </option>
+                                    <option value="allocator" {% if user.role == 'allocator' %}selected{% endif %}>
+                                        Allocator</option>
+                                    <option value="writer" {% if user.role == 'writer' %}selected{% endif %}>Writer
+                                    </option>
+                                    <option value="process" {% if user.role == 'process' %}selected{% endif %}>Process
+                                    </option>
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                            </form>
+                        </td>
+
+                        <!-- Current Role -->
+                        <td>
+                            <span class="status-tag status-{{ user.role }}" style="text-transform: capitalize;">
+                                {{ user.get_role_display }}
+                            </span>
+                        </td>
+
+                        <!-- Category -->
+                        <td>
+                            <div class="writer-only-wrapper" data-writer-field>
+                                <form method="POST" action="{% url 'superadmin:update_user_category' user.id %}"
+                                    style="display: flex; gap: 0.5rem;">
+                                    {% csrf_token %}
+                                    <select name="category" class="form-control form-select"
+                                        style="width: 120px; padding: 6px 12px; font-size: 13px;"
+                                        onchange="this.form.submit()">
+                                        <option value="">Select</option>
+                                        <option value="IT" {% if user.department == 'IT' %}selected{% endif %}>IT</option>
+                                        <option value="Non-IT" {% if user.department == 'Non-IT' %}selected{% endif %}>
+                                            Non-IT
+                                        </option>
+                                        <option value="Finance" {% if user.department == 'Finance' %}selected{% endif %}>
+                                            Finance</option>
+                                    </select>
+                                </form>
+                            </div>
+                            <span class="writer-only-placeholder" data-writer-placeholder>Only for Writer role</span>
+                        </td>
+
+                        <!-- Specialisation - NEW COLUMN -->
+                        <td>
+                            <div class="writer-only-wrapper" data-writer-field>
+
+                                <!-- Manage Button -->
+                                <div class="specialisation-manage-btn-wrapper">
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        onclick="openSpecialisationModal({{ user.id }}, '{{ user.get_full_name }}', [{% for spec in user.specialisations.all %}'{{ spec.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
+
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                            <path
+                                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" />
+                                        </svg>
+                                        Manage
+                                    </button>
+                                </div>
+
+                                <!-- Tags -->
+                                <div class="specialisation-tags">
+                                    {% for spec in user.specialisations.all %}
+                                    <span class="status-tag">
+                                        {{ spec.specialisation_name }}
+                                    </span>
+                                    {% empty %}
+                                    <span class="specialisation-empty">No specialisations</span>
+                                    {% endfor %}
+                                </div>
+
+                            </div>
+
+                            <span class="writer-only-placeholder" data-writer-placeholder>
+                                Only for Writer role
+                            </span>
+                        </td>
+
+                        <!-- Level -->
+                        <td>
+                            <div class="writer-only-wrapper" data-writer-field>
+                                <form method="POST" action="{% url 'superadmin:update_user_level' user.id %}"
+                                    style="display: flex; gap: 0.5rem;">
+                                    {% csrf_token %}
+                                    <input type="number" name="level" value="{{ user.level|default:0 }}" min="0" max="5"
+                                        class="form-control" style="width: 70px; padding: 6px; font-size: 13px;">
+                                    <button type="submit" class="btn btn-primary btn-sm">Set</button>
+                                </form>
+                            </div>
+                            <span class="writer-only-placeholder" data-writer-placeholder>Only for Writer role</span>
+                        </td>
+
+                        <!-- Organisation -->
+                        <td>
+                            <form method="POST" action="{% url 'superadmin:update_user_organisation' user.id %}"
+                                style="display: flex; gap: 0.5rem;">
+                                {% csrf_token %}
+                                <select name="organisation" class="form-control form-select"
+                                    style="width: 150px; padding: 6px 12px; font-size: 13px;"
+                                    onchange="this.form.submit()">
+                                    <option value="">Select</option>
+                                    {% for org in all_organisations %}
+                                    <option value="{{ org.organisation_name }}"
+                                        {% if user.organisation and user.organisation.id == org.id %}selected{% endif %}>
+                                        {{ org.organisation_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+
+                        <!-- Action -->
+                        <td>
+                            <a href="{% url 'superadmin:edit_user' user.id %}" class="btn btn-outline btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                    <path
+                                        d="M18.5 2.50023C18.8978 2.1024 19.4374 1.87891 20 1.87891C20.5626 1.87891 21.1022 2.1024 21.5 2.50023C21.8978 2.89805 22.1213 3.43762 22.1213 4.00023C22.1213 4.56284 21.8978 5.1024 21.5 5.50023L12 15.0002L8 16.0002L9 12.0002L18.5 2.50023Z"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                                Edit Profile
+                            </a>
+                        </td>
+
+                        <!-- Profile Status -->
+                        <td>
+                            <form method="POST" action="{% url 'superadmin:toggle_user_status' user.id %}">
+                                {% csrf_token %}
+                                <label class="toggle-switch">
+                                    <input type="checkbox" {% if user.is_active %}checked{% endif %}
+                                        onchange="this.form.submit()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </form>
+                        </td>
+
+                        <!-- Generate Password -->
+                        <td>
+                            <button type="button" class="btn btn-primary btn-sm"
+                                onclick="openChangePasswordModal({{ user.id }}, '{{ user.get_full_name }}', '{{ user.email }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path
+                                        d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="13" style="text-align: center; padding: 2rem; opacity: 0.6;">
+                            No users found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-overlay" id="addUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New User</h2>
+            <button class="modal-close" onclick="closeModal('addUserModal')">&times;</button>
+        </div>
+        <form method="POST" action="{% url 'superadmin:add_user' %}" id="addUserForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="full_name" class="form-label required">Full Name</label>
+                <input type="text" name="full_name" id="full_name" class="form-control" placeholder="Enter full name"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label required">Email</label>
+                <input type="email" name="email" id="email" class="form-control" placeholder="Enter email address"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label for="whatsapp_number" class="form-label required">WhatsApp Number</label>
+                <input type="text" name="whatsapp_number" id="whatsapp_number" class="form-control"
+                    placeholder="Enter 10-digit number" pattern="[0-9]{10}" maxlength="10" required>
+                <small style="color: var(--secondary); font-size: 12px;">Must be exactly 10 digits</small>
+            </div>
+
+            <div class="form-group">
+                <label for="role" class="form-label required">Role</label>
+                <select name="role" id="role" class="form-control form-select" required>
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="writer">Writer</option>
+                    <option value="process">Process Team</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="allocator">Allocator</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Super Admin</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="password1" class="form-label required">Password</label>
+                <input type="password" name="password1" id="password1" class="form-control" placeholder="Enter password"
+                    minlength="8" required>
+                <small style="color: var(--secondary); font-size: 12px;">Minimum 8 characters</small>
+            </div>
+
+            <div class="form-group">
+                <label for="password2" class="form-label required">Confirm Password</label>
+                <input type="password" name="password2" id="password2" class="form-control"
+                    placeholder="Re-enter password" minlength="8" required>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Create User</button>
+                <button type="button" class="btn btn-light" onclick="closeModal('addUserModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="changePasswordModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Change Password</h2>
+            <button class="modal-close" onclick="closeModal('changePasswordModal')">&times;</button>
+        </div>
+
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                <strong>User:</strong> <span id="changePasswordUserName"></span>
+            </p>
+            <p style="margin: 0.5rem 0 0; font-size: 13px; opacity: 0.8;">
+                <strong>Email:</strong> <span id="changePasswordUserEmail"></span>
+            </p>
+        </div>
+
+        <form method="POST" id="changePasswordForm" autocomplete="off" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="new_password" id="new_password">
+            <input type="hidden" name="copy_confirmed" id="copy_confirmed" value="false">
+            <div class="form-group">
+                <label class="form-label required">Generated Password</label>
+                <div class="generated-password-row">
+                    <input type="text" id="generated_password_display" class="form-control generated-password-field"
+                        readonly aria-label="Generated password">
+                    <div class="generated-password-actions">
+                        <button type="button" class="btn btn-primary btn-sm" id="copy_password_btn">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <small class="field-error" id="new_password_error"></small>
+                <small class="field-success" id="copy_status" style="display: none;"></small>
+                <small class="field-hint">Password is auto-generated. Copy it before saving.</small>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary" id="submitPasswordBtn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Save Password
+                </button>
+                <button type="button" class="btn btn-light" onclick="closeModal('changePasswordModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Specialisation Modal -->
+<div class="modal-overlay" id="specialisationModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Manage Specialisations</h2>
+            <button class="modal-close" onclick="closeModal('specialisationModal')">&times;</button>
+        </div>
+
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                <strong>User:</strong> <span id="specialisationUserName"></span>
+            </p>
+        </div>
+
+        <form method="POST" id="specialisationForm">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label class="form-label">Select Specialisations</label>
+                <div class="specialisation-grid">
+                    {% for spec in all_specialisations %}
+                    <label class="specialisation-checkbox-item">
+                        <input type="checkbox" name="specialisations" value="{{ spec.id }}"
+                            class="specialisation-checkbox">
+                        <span class="specialisation-checkbox-label">{{ spec.specialisation_name }}</span>
+                    </label>
+                    {% empty %}
+                    <p style="opacity: 0.6; font-size: 14px;">No specialisations available. Please create some in
+                        Specialisation Master first.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Save Specialisations
+                </button>
+                <button type="button" class="btn btn-light" onclick="closeModal('specialisationModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const PASSWORD_LENGTH = 12;
+
+    const generateRandomPassword = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?';
+        let result = '';
+        for (let i = 0; i < PASSWORD_LENGTH; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    };
+
+    const setGeneratedPassword = (password) => {
+        const displayField = document.getElementById('generated_password_display');
+        const hiddenField = document.getElementById('new_password');
+        if (displayField) displayField.value = password;
+        if (hiddenField) hiddenField.value = password;
+    };
+
+    const resetCopyState = () => {
+        const copyFlag = document.getElementById('copy_confirmed');
+        const copyStatus = document.getElementById('copy_status');
+        const submitBtn = document.getElementById('submitPasswordBtn');
+        const errorEl = document.getElementById('new_password_error');
+        if (copyFlag) copyFlag.value = 'false';
+        if (copyStatus) {
+            copyStatus.style.display = 'none';
+            copyStatus.textContent = '';
+        }
+        if (submitBtn) submitBtn.disabled = true;
+        if (errorEl) errorEl.textContent = '';
+    };
+
+    // Function to open change password modal
+    function openChangePasswordModal(userId, userName, userEmail) {
+        document.getElementById('changePasswordUserName').textContent = userName;
+        document.getElementById('changePasswordUserEmail').textContent = userEmail;
+
+        const form = document.getElementById('changePasswordForm');
+        form.action = `/superadmin/change-user-password/${userId}/`;
+
+        resetCopyState();
+        setGeneratedPassword(generateRandomPassword());
+
+        openModal('changePasswordModal');
+    }
+
+    // Function to open specialisation modal
+    function openSpecialisationModal(userId, userName, selectedIds) {
+        document.getElementById('specialisationUserName').textContent = userName;
+
+        const form = document.getElementById('specialisationForm');
+        form.action = `/superadmin/update-specialisations/${userId}/`;
+
+        // Reset all checkboxes
+        document.querySelectorAll('.specialisation-checkbox').forEach(checkbox => {
+            checkbox.checked = selectedIds.includes(checkbox.value);
+        });
+
+        openModal('specialisationModal');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('keyup', function () {
+            const searchValue = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#usersTable tbody tr');
+
+            rows.forEach((row) => {
+                const nameCell = row.querySelector('[data-column="name"]');
+                const emailCell = row.querySelector('[data-column="email"]');
+                const name = nameCell?.textContent.toLowerCase() || '';
+                const email = emailCell?.textContent.toLowerCase() || '';
+
+                row.style.display = (name.includes(searchValue) || email.includes(searchValue)) ? '' : 'none';
+            });
+        });
+
+        // Toggle category/level/specialisation fields only for Writer role
+        const WRITER_ROLE = 'writer';
+        const rows = document.querySelectorAll('#usersTable tbody tr');
+
+        const toggleWriterFields = (row) => {
+            const roleSelect = row.querySelector('[data-role-select]');
+            if (!roleSelect) return;
+
+            const isWriter = (roleSelect.value || '').toLowerCase() === WRITER_ROLE;
+
+            row.querySelectorAll('[data-writer-field]').forEach((section) => {
+                section.classList.toggle('writer-field-hidden', !isWriter);
+                section.querySelectorAll('input, select, button').forEach((input) => {
+                    if (input.hasAttribute('data-keep-enabled')) return;
+                    input.disabled = !isWriter;
+                });
+            });
+
+            row.querySelectorAll('[data-writer-placeholder]').forEach((placeholder) => {
+                placeholder.classList.toggle('writer-field-hidden', isWriter);
+            });
+        };
+
+        rows.forEach((row) => {
+            const roleSelect = row.querySelector('[data-role-select]');
+            if (!roleSelect) return;
+
+            toggleWriterFields(row);
+            roleSelect.addEventListener('change', () => toggleWriterFields(row));
+        });
+
+        // Form validation for Add User
+        const addUserForm = document.getElementById('addUserForm');
+        if (addUserForm) {
+            addUserForm.addEventListener('submit', function (e) {
+                const password1 = document.getElementById('password1').value;
+                const password2 = document.getElementById('password2').value;
+                const whatsapp = document.getElementById('whatsapp_number').value;
+                const email = document.getElementById('email').value;
+
+                // Validate passwords match
+                if (password1 !== password2) {
+                    e.preventDefault();
+                    alert('Passwords do not match!');
+                    return false;
+                }
+
+                // Validate password length
+                if (password1.length < 8) {
+                    e.preventDefault();
+                    alert('Password must be at least 8 characters long!');
+                    return false;
+                }
+
+                // Validate WhatsApp number
+                if (!/^\d{10}$/.test(whatsapp)) {
+                    e.preventDefault();
+                    alert('WhatsApp number must be exactly 10 digits!');
+                    return false;
+                }
+
+                // Validate email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    e.preventDefault();
+                    alert('Please enter a valid email address!');
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Real-time WhatsApp number validation
+            const whatsappInput = document.getElementById('whatsapp_number');
+            whatsappInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
+            });
+        }
+
+        // Form validation for Change Password (generated-only)
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        if (changePasswordForm) {
+            const copyButton = document.getElementById('copy_password_btn');
+            const copyStatus = document.getElementById('copy_status');
+            const copyFlag = document.getElementById('copy_confirmed');
+            const submitBtn = document.getElementById('submitPasswordBtn');
+            const passwordError = document.getElementById('new_password_error');
+
+            const enableSaveAfterCopy = () => {
+                if (copyFlag) copyFlag.value = 'true';
+                if (submitBtn) submitBtn.disabled = false;
+                if (copyStatus) {
+                    copyStatus.textContent = 'Password copied. You can now save.';
+                    copyStatus.style.display = 'block';
+                }
+            };
+
+            const handleCopy = async () => {
+                const password = document.getElementById('generated_password_display').value;
+                if (!password) return;
+
+                try {
+                    await navigator.clipboard.writeText(password);
+                    enableSaveAfterCopy();
+                } catch (err) {
+                    // Fallback
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = password;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    enableSaveAfterCopy();
+                }
+            };
+
+            if (copyButton) {
+                copyButton.addEventListener('click', handleCopy);
+            }
+
+            changePasswordForm.addEventListener('submit', function (e) {
+                const password = document.getElementById('new_password').value.trim();
+                const copied = document.getElementById('copy_confirmed').value === 'true';
+
+                if (passwordError) passwordError.textContent = '';
+
+                if (!password || password.length < 8) {
+                    e.preventDefault();
+                    if (passwordError) {
+                        passwordError.textContent = 'Generated password is missing. Regenerate and try again.';
+                    }
+                    return false;
+                }
+
+                if (!copied) {
+                    e.preventDefault();
+                    if (passwordError) {
+                        passwordError.textContent = 'Please copy the password before saving.';
+                    }
+                    return false;
+                }
+
+                return true;
+            });
+        }
+    });
+</script>
+
+<style>
+    .alert-stack {
+        margin-top: 1rem;
+    }
+
+    .field-error {
+        display: block;
+        margin-top: 4px;
+        color: #e74c3c;
+        font-size: 12px;
+        min-height: 14px;
+    }
+
+    .field-success {
+        display: block;
+        margin-top: 4px;
+        color: #1f9d55;
+        font-size: 12px;
+    }
+
+    .input-error {
+        border-color: #e74c3c !important;
+        box-shadow: 0 0 0 0.1rem rgba(231, 76, 60, 0.15);
+    }
+
+    .generated-password-row {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .generated-password-field {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        letter-spacing: 0.04em;
+    }
+
+    .generated-password-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .kpi-card-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .kpi-card-link:hover,
+    .kpi-card-link:focus-visible {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+        background-color: var(--primary);
+    }
+
+    .toggle-switch input:checked+.toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+    .writer-only-placeholder {
+        display: inline-block;
+        font-size: 12px;
+        color: var(--secondary);
+        opacity: 0.7;
+    }
+
+    .writer-field-hidden {
+        display: none !important;
+    }
+
+    .writer-only-wrapper {
+        min-height: 40px;
+    }
+
+    .password-toggle-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-color);
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    .password-toggle-btn:hover {
+        opacity: 1;
+    }
+
+    .password-toggle-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Specialisation Modal Styles */
+    .specialisation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+    }
+
+    .specialisation-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .specialisation-checkbox-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--primary);
+    }
+
+    .specialisation-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .specialisation-checkbox-label {
+        font-size: 14px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .specialisation-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            font-size: 12px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px;
+        }
+
+        .specialisation-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}

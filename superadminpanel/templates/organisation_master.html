@@ -1,0 +1,459 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Organisation Master - CRM Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        max-width: 700px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .status-active {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22c55e;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-inactive {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .type-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .type-mother {
+        background: rgba(139, 92, 246, 0.2);
+        color: #8b5cf6;
+    }
+
+    .type-child {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 26px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+
+    input:checked+.toggle-slider {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+
+    input:checked+.toggle-slider:before {
+        transform: translateX(24px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Back Button -->
+    <div style="margin-bottom: var(--spacing-lg);">
+        <a href="{% url 'superadmin:master_input' %}" class="btn btn-outline">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Master Input
+        </a>
+    </div>
+
+    <!-- Page Header -->
+    <div class="dashboard-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xl);">
+        <div>
+            <h1 class="dashboard-title">Organisation Master</h1>
+            <p class="dashboard-subtitle">Manage mother and child organisations</p>
+        </div>
+        <button onclick="showCreateOrgModal()" class="btn btn-primary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Organisation
+        </button>
+    </div>
+
+    <!-- Organisation List -->
+    <div class="card mt-4">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 class="card-title">Organisations</h3>
+                <p class="dashboard-subtitle">All organisations ({{ total_organisations }})</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" id="orgSearchInput" class="form-control" placeholder="Search organisations..."
+                    style="width: 300px;">
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="table-container table-scroll-lock">
+                {% if organisations %}
+                <table class="data-table" id="organisationsTable">
+                    <thead>
+                        <tr>
+                            <th>SL. NO</th>
+                            <th>CODE</th>
+                            <th>ORGANISATION NAME</th>
+                            <th>EMAIL</th>
+                            <th>TYPE</th>
+                            <th>PARENT</th>
+                            <th>STATUS</th>
+                            <th>CREATED DATE</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for org in organisations %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td data-column="code" style="font-weight: 600;">{{ org.organisation_code }}</td>
+                            <td data-column="name">{{ org.organisation_name }}</td>
+                            <td>{{ org.email|default:"-" }}</td>
+                            <td>
+                                <span
+                                    class="type-badge {% if org.org_type == 'mother' %}type-mother{% else %}type-child{% endif %}">
+                                    {{ org.get_org_type_display }}
+                                </span>
+                            </td>
+                            <td>{{ org.parent_organisation.organisation_name|default:"-" }}</td>
+                            <td>
+                                <span class="{% if org.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                    {{ org.status_display }}
+                                </span>
+                            </td>
+                            <td>{{ org.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <!-- EDIT BUTTON -->
+                                    <button type="button" class="btn btn-outline btn-sm" data-id="{{ org.id }}"
+                                        data-action="{% url 'superadmin:edit_organisation' org.id %}"
+                                        data-code="{{ org.organisation_code }}"
+                                        data-name="{{ org.organisation_name|escape }}"
+                                        data-email="{{ org.email|default:'' }}"
+                                        data-address="{{ org.address|default:'' }}" data-type="{{ org.org_type }}"
+                                        data-parent="{{ org.parent_organisation.organisation_name|default:'' }}"
+                                        data-active="{{ org.is_active|yesno:'true,false' }}"
+                                        onclick="showEditOrgModal(this)">
+                                        Edit
+                                    </button>
+
+                                    <!-- DELETE BUTTON -->
+                                    <form method="POST" action="{% url 'superadmin:delete_organisation' org.id %}"
+                                        onsubmit="return confirm('Are you sure you want to delete this organisation?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% else %}
+                <!-- EMPTY STATE -->
+                <div style="text-align: center; padding: 2rem; opacity: 0.7;">
+                    <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        style="opacity: 0.3;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <p style="font-size: 16px;">No organisations created yet</p>
+                    <p style="font-size: 14px; opacity: 0.6; margin-top: 6px;">
+                        Click "Create Organisation" to add your first organisation
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Organisation Modal -->
+<div class="modal-overlay" id="createOrgModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="orgModalTitle">Create Organisation</h2>
+            <button type="button" class="modal-close" onclick="closeModal('createOrgModal')">&times;</button>
+        </div>
+
+        <form method="POST" action="{% url 'superadmin:create_organisation' %}" id="orgForm">
+            {% csrf_token %}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Organisation Code -->
+                <div class="form-group">
+                    <label for="organisation_code" class="form-label required">Organisation Code</label>
+                    <input type="text" id="organisation_code" name="organisation_code" class="form-control"
+                        placeholder="e.g., ORG001" required>
+                </div>
+
+                <!-- Organisation Name -->
+                <div class="form-group">
+                    <label for="organisation_name" class="form-label required">Organisation Name</label>
+                    <input type="text" id="organisation_name" name="organisation_name" class="form-control"
+                        placeholder="e.g., Acme Corporation" required>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" class="form-control"
+                    placeholder="e.g., contact@organisation.com">
+            </div>
+
+            <!-- Address -->
+            <div class="form-group">
+                <label for="address" class="form-label">Address</label>
+                <textarea id="address" name="address" class="form-control" rows="2"
+                    placeholder="Enter organisation address"></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Organisation Type -->
+                <div class="form-group">
+                    <label class="form-label required">Organisation Type</label>
+                    <div style="display: flex; gap: 1.5rem; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="org_type" value="mother" checked
+                                onchange="toggleParentDropdown()">
+                            <span>Mother Organisation</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="org_type" value="child" onchange="toggleParentDropdown()">
+                            <span>Child Organisation</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem;">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="is_active" name="is_active" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span id="statusLabel">Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parent Organisation (shown only for Child) -->
+            <div class="form-group" id="parentOrgSection" style="display: none;">
+                <label for="parent_organisation" class="form-label required">Select Parent Organisation</label>
+                <select id="parent_organisation" name="parent_organisation" class="form-control">
+                    <option value="">-- Select Parent Organisation --</option>
+                    {% for mother_org in mother_organisations %}<option value="{{ mother_org.organisation_name }}">{{ mother_org.organisation_name }}</option>{% endfor %}
+                </select>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-group" style="margin-top: 1.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('createOrgModal')">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="orgSubmitBtn">
+                    Create Organisation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const orgModalState = {
+        modalId: 'createOrgModal',
+        createAction: '{% url "superadmin:create_organisation" %}',
+        form: null,
+        title: null,
+        submitBtn: null,
+    };
+
+    function toggleParentDropdown() {
+        const orgType = document.querySelector('input[name="org_type"]:checked').value;
+        const parentSection = document.getElementById('parentOrgSection');
+        const parentSelect = document.getElementById('parent_organisation');
+
+        if (orgType === 'child') {
+            parentSection.style.display = 'block';
+            parentSelect.required = true;
+        } else {
+            parentSection.style.display = 'none';
+            parentSelect.required = false;
+            parentSelect.value = '';
+        }
+    }
+
+    function updateStatusLabel() {
+        const checkbox = document.getElementById('is_active');
+        const label = document.getElementById('statusLabel');
+        label.textContent = checkbox.checked ? 'Active' : 'Inactive';
+    }
+
+    function resetOrgForm() {
+        if (!orgModalState.form) return;
+        orgModalState.form.reset();
+        orgModalState.form.action = orgModalState.createAction;
+
+        // Reset to mother type
+        document.querySelector('input[name="org_type"][value="mother"]').checked = true;
+        toggleParentDropdown();
+
+        // Reset status to active
+        document.getElementById('is_active').checked = true;
+        updateStatusLabel();
+    }
+
+    function showCreateOrgModal() {
+        resetOrgForm();
+        if (orgModalState.title) {
+            orgModalState.title.textContent = 'Create Organisation';
+        }
+        if (orgModalState.submitBtn) {
+            orgModalState.submitBtn.textContent = 'Create Organisation';
+        }
+        openModal(orgModalState.modalId);
+    }
+
+    function showEditOrgModal(button) {
+        if (!orgModalState.form || !button) return;
+
+        resetOrgForm();
+
+        if (orgModalState.title) {
+            orgModalState.title.textContent = 'Edit Organisation';
+        }
+        if (orgModalState.submitBtn) {
+            orgModalState.submitBtn.textContent = 'Update Organisation';
+        }
+
+        orgModalState.form.action = button.dataset.action || orgModalState.createAction;
+
+        document.getElementById('organisation_code').value = button.dataset.code || '';
+        document.getElementById('organisation_name').value = button.dataset.name || '';
+        document.getElementById('email').value = button.dataset.email || '';
+        document.getElementById('address').value = button.dataset.address || '';
+
+        // Set organisation type
+        const orgType = button.dataset.type || 'mother';
+        document.querySelector(`input[name="org_type"][value="${orgType}"]`).checked = true;
+        toggleParentDropdown();
+
+        // Set parent if child
+        if (orgType === 'child' && button.dataset.parent) {
+            document.getElementById('parent_organisation').value = button.dataset.parent;
+        }
+
+        // Set status
+        const isActive = button.dataset.active === 'true';
+        document.getElementById('is_active').checked = isActive;
+        updateStatusLabel();
+
+        openModal(orgModalState.modalId);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        orgModalState.form = document.getElementById('orgForm');
+        orgModalState.title = document.getElementById('orgModalTitle');
+        orgModalState.submitBtn = document.getElementById('orgSubmitBtn');
+
+        // Status toggle listener
+        const statusCheckbox = document.getElementById('is_active');
+        if (statusCheckbox) {
+            statusCheckbox.addEventListener('change', updateStatusLabel);
+        }
+    });
+
+    // Search functionality
+    document.getElementById("orgSearchInput").addEventListener("keyup", function () {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll("#organisationsTable tbody tr");
+
+        rows.forEach(row => {
+            let codeText = row.querySelector('[data-column="code"]').innerText.toLowerCase();
+            let nameText = row.querySelector('[data-column="name"]').innerText.toLowerCase();
+            row.style.display = (codeText.includes(filter) || nameText.includes(filter)) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}
