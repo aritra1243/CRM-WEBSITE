@@ -554,8 +554,9 @@ def register_view(request):
         if password1 != password2:
             errors.append('Passwords do not match.')
         
-        # Email exists?
-        if CustomUser.objects.filter(email=email).exists():
+        # Email exists? (using PyMongo to bypass djongo)
+        from common.pymongo_utils import pymongo_exists, pymongo_create_user
+        if pymongo_exists(CustomUser, email=email):
             errors.append('Email is already registered.')
         
         # Return errors
@@ -565,33 +566,35 @@ def register_view(request):
             return render(request, 'accounts/register.html')
         
         try:
-            # Generate username
+            # Generate username (using PyMongo to bypass djongo)
             username = email.split('@')[0]
             base_username = username
             counter = 1
             
-            while CustomUser.objects.filter(username=username).exists():
+            while pymongo_exists(CustomUser, username=username):
                 username = f"{base_username}{counter}"
                 counter += 1
             
-            # Create user
-            with transaction.atomic():
-                now = timezone.now()
-                user = CustomUser.objects.create(
-                    username=username,
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    whatsapp_number=whatsapp_number,
-                    role='user',
-                    is_approved=False,
-                    approval_status='pending',
-                    is_active=True,
-                    registered_at=now,
-                    approval_requested_at=now,
-                )
-                user.set_password(password1)
-                user.save()
+            # Create user using PyMongo directly
+            now = timezone.now()
+            user = pymongo_create_user(
+                CustomUser,
+                password=password1,
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                whatsapp_number=whatsapp_number,
+                role='user',
+                is_approved=False,
+                approval_status='pending',
+                is_active=True,
+                is_superuser=False,
+                is_staff=False,
+                registered_at=now,
+                approval_requested_at=now,
+                date_joined=now,
+            )
             
             client_info = get_client_info(request)
             

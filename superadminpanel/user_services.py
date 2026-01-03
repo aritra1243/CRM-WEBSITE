@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from accounts.models import CustomUser, LoginLog, ProfileChangeRequest
 from accounts.services import log_activity_event
+from common.pymongo_utils import pymongo_update, get_mongo_db, pymongo_update_m2m
 
 logger = logging.getLogger('superadmin')
 
@@ -213,34 +214,47 @@ def get_manage_users_context(performed_by=None):
     approved_count = 0
     
     try:
-        # Get ALL users with approved roles (not filtered by approval_status)
-        users_qs = CustomUser.objects.filter(
-            role__in=APPROVED_ROLES,
-        ).prefetch_related('specialisations').order_by('-date_joined')
+        from common.pymongo_utils import pymongo_filter, get_mongo_db
         
+        # Use PyMongo to bypass broken ORM SQL parsing
+        db = get_mongo_db()
+        users_coll = db[CustomUser._meta.db_table]
+        
+        # 1. Fetch Users
+        user_query = {'role': {'$in': APPROVED_ROLES}}
         if performed_by and _is_admin_actor(performed_by):
-            users_qs = users_qs.exclude(role__in=PRIVILEGED_MANAGE_ROLES)
+            excluded_roles = list(PRIVILEGED_MANAGE_ROLES)
+            user_query['role'] = {'$in': [r for r in APPROVED_ROLES if r not in excluded_roles]}
         
-        users = list(users_qs)
+        users = pymongo_filter(CustomUser, query=user_query, sort=[('date_joined', -1)])
+        
+        # Prefetch specialisations via PyMongo
+        from superadminpanel.models import SpecialisationMaster
+        from common.pymongo_utils import pymongo_prefetch_m2m
+        pymongo_prefetch_m2m(
+            users,
+            field_name='specialisations',
+            related_model=SpecialisationMaster,
+            join_table='custom_users_specialisations',
+            source_field='customuser_id',
+            target_field='specialisationmaster_id'
+        )
+        
         total_users = len(users)
         
-        # Count approved users
-        approved_qs = CustomUser.objects.filter(
-            approval_status='approved',
-            role__in=APPROVED_ROLES,
-        )
+        # 2. Count Approved
+        approved_query = {'approval_status': 'approved', 'role': {'$in': APPROVED_ROLES}}
         if performed_by and _is_admin_actor(performed_by):
-            approved_qs = approved_qs.exclude(role__in=PRIVILEGED_MANAGE_ROLES)
-        approved_count = approved_qs.count()
+            excluded_roles = list(PRIVILEGED_MANAGE_ROLES)
+            approved_query['role'] = {'$in': [r for r in APPROVED_ROLES if r not in excluded_roles]}
         
-        # Count pending users
-        pending_qs = CustomUser.objects.filter(
-            approval_status='pending',
-        )
-        pending_count = pending_qs.count()
+        approved_count = users_coll.count_documents(approved_query)
+        
+        # 3. Count Pending
+        pending_count = users_coll.count_documents({'approval_status': 'pending'})
     
     except Exception as exc:  # pragma: no cover
-        logger.exception("Error fetching manage users data: %s", exc)
+        logger.exception("Error fetching manage users data via PyMongo: %s", exc)
     
     context = {
         'users': users,
@@ -278,9 +292,14 @@ def update_user_role(request, user_id):
     
     if new_role in valid_roles:
         old_role = user.role
+        assigned_at = timezone.now()
+        
+        # Use PyMongo for update to bypass broken Djongo ORM
+        pymongo_update(CustomUser, {'id': user.id}, role=new_role, role_assigned_at=assigned_at)
+        
+        # Update instance in memory
         user.role = new_role
-        user.role_assigned_at = timezone.now()
-        user.save(update_fields=['role', 'role_assigned_at'])
+        user.role_assigned_at = assigned_at
         
         logger.info("User %s role updated from %s to %s by %s",
                     user.email, old_role, new_role, request.user.email)
@@ -318,13 +337,20 @@ def update_user_category(request, user_id):
         messages.error(request, WRITER_ONLY_FIELDS_MESSAGE)
         return
     
-    category = request.POST.get('category')
-    user.department = category
-    user.save(update_fields=['department'])
-    
-    logger.info("User %s category updated to %s by %s",
-                user.email, category, request.user.email)
-    messages.success(request, 'User category updated successfully.')
+    new_category = request.POST.get('category')
+    if new_category in ['IT', 'Non-IT', 'Finance']:
+        old_cat = getattr(user, 'department', '')
+        
+        # Use PyMongo for update
+        pymongo_update(CustomUser, {'id': user.id}, department=new_category)
+        
+        user.department = new_category
+        
+        logger.info("User %s category updated from %s to %s by %s",
+                user.email, old_cat, new_category, request.user.email)
+        messages.success(request, 'User category updated successfully.')
+    else:
+        messages.error(request, 'Invalid category selected.')
 
 
 def update_user_level(request, user_id):
@@ -342,24 +368,30 @@ def update_user_level(request, user_id):
         return
     
     try:
-        level = int(request.POST.get('level', 0))
-        if 0 <= level <= 5:
-            user.level = level
-            user.save(update_fields=['level'])
-            
-            logger.info("User %s level updated to %s by %s",
-                        user.email, level, request.user.email)
-            
-            log_activity_event(
-                'manage_user.level_updated_at',
-                subject_user=user,
-                performed_by=request.user,
-                metadata={'level': level},
-            )
-            
-            messages.success(request, 'User level updated successfully.')
-        else:
-            messages.error(request, 'Level must be between 0 and 5.')
+        new_level = request.POST.get('level')
+        if new_level is not None:
+            level_value = int(new_level)
+            if 0 <= level_value <= 5:
+                old_level = getattr(user, 'level', 0)
+                
+                # Use PyMongo for update
+                pymongo_update(CustomUser, {'id': user.id}, level=level_value)
+                
+                user.level = level_value
+                
+                logger.info("User %s level updated from %s to %s by %s",
+                            user.email, old_level, level_value, request.user.email)
+                
+                log_activity_event(
+                    'manage_user.level_updated_at',
+                    subject_user=user,
+                    performed_by=request.user,
+                    metadata={'level': level_value},
+                )
+                
+                messages.success(request, 'User level updated successfully.')
+            else:
+                messages.error(request, 'Level must be between 0 and 5.')
     except ValueError:
         messages.error(request, 'Invalid level value.')
 
@@ -374,15 +406,20 @@ def toggle_user_status(request, user_id):
         messages.error(request, RESTRICTED_ROLE_MESSAGE)
         return
     
-    user.is_active = not user.is_active
-    status_field = 'activated_at' if user.is_active else 'deactivated_at'
+    # Use PyMongo for update
+    new_status = not user.is_active
     timestamp = timezone.now()
-    setattr(user, status_field, timestamp)
-    user.save(update_fields=['is_active', status_field])
+    status_field = 'activated_at' if new_status else 'deactivated_at'
     
-    status = 'activated' if user.is_active else 'deactivated'
+    update_data = {'is_active': new_status, status_field: timestamp}
+    pymongo_update(CustomUser, {'id': user.id}, **update_data)
     
-    logger.info("User %s %s by %s", user.email, status, request.user.email)
+    user.is_active = new_status
+    setattr(user, status_field, timestamp) # Update in-memory object
+    
+    status_text = 'activated' if user.is_active else 'deactivated'
+    
+    logger.info("User %s %s by %s", user.email, status_text, request.user.email)
     
     log_activity_event(
         f'user.{status_field}',
@@ -612,11 +649,14 @@ def process_edit_user_form(request, user):
                 user.specialisations.clear()
                 
                 # Add new specialisations
-                if specialisation_ids:
-                    specialisations = _filter_not_deleted(
-                        SpecialisationMaster.objects.filter(id__in=specialisation_ids)
-                    )
-                    user.specialisations.set(specialisations)
+                # Use PyMongo for M2M update to bypass broken Djongo ORM
+                pymongo_update_m2m(
+                    instance_id=user.id,
+                    join_table='custom_users_specialisations',
+                    source_field='customuser_id',
+                    target_field='specialisationmaster_id',
+                    related_ids=new_spec_ids
+                )
                 
                 specialisation_updated = True
                 profile_fields.append('specialisations')
@@ -643,9 +683,10 @@ def process_edit_user_form(request, user):
         user.role_assigned_at = timestamp
         update_fields.add('role_assigned_at')
     
-    # Save user fields (but not M2M relationships)
+    # Save user fields using PyMongo to bypass broken Djongo ORM
     if update_fields:
-        user.save(update_fields=list(update_fields))
+        update_dict = {field: getattr(user, field) for field in update_fields}
+        pymongo_update(CustomUser, {'id': user.id}, **update_dict)
     
     # Log activity events
     if cleaned_profile_fields:
@@ -703,12 +744,14 @@ def get_pending_items_context():
     profile_requests_active = []
     
     try:
-        pending_qs = CustomUser.objects.filter(
-            approval_status='pending'
-        ).order_by('date_joined')
-        pending_users = list(pending_qs)
+        from common.pymongo_utils import pymongo_filter
+        pending_users = pymongo_filter(
+            CustomUser, 
+            query={'approval_status': 'pending'}, 
+            sort=[('date_joined', 1)]
+        )
     except Exception as exc:  # pragma: no cover
-        logger.exception("Error fetching pending users: %s", exc)
+        logger.exception("Error fetching pending users via PyMongo: %s", exc)
     
     try:
         profile_requests_pending = list(
@@ -753,19 +796,36 @@ def approve_user(request, user_id):
     previous_employee_id = user.employee_id
     approval_time = timezone.now()
     
-    with transaction.atomic():
-        user.role = role
-        user.approval_status = 'approved'
-        user.is_approved = True
-        user.level = getattr(user, 'level', 0) or 0
-        user.approved_at = approval_time
-        user.role_assigned_at = approval_time
-        user.save()
+    approval_time = timezone.now()
+    level = getattr(user, 'level', 0) or 0
+    
+    # Use PyMongo for update
+    update_data = {
+        'role': role,
+        'approval_status': 'approved',
+        'is_approved': True,
+        'level': level,
+        'approved_at': approval_time,
+        'role_assigned_at': approval_time
+    }
+    pymongo_update(CustomUser, {'id': user.id}, **update_data)
+    
+    # Update instance in memory
+    user.role = role
+    user.approval_status = 'approved'
+    user.is_approved = True
+    user.level = level
+    user.approved_at = approval_time
+    user.role_assigned_at = approval_time
     
     if user.employee_id and not previous_employee_id:
+        # Use PyMongo for update
+        pymongo_update(CustomUser, {'id': user.id}, 
+                       employee_id_generated_at=approval_time,
+                       employee_id_assigned_at=approval_time)
+        
         user.employee_id_generated_at = approval_time
         user.employee_id_assigned_at = approval_time
-        user.save(update_fields=['employee_id_generated_at', 'employee_id_assigned_at'])
         
         log_activity_event(
             'employee_id.generated_at',
@@ -809,11 +869,18 @@ def reject_user(request, user_id):
     
     user = get_object_or_404(CustomUser, id=user_id)
     
-    with transaction.atomic():
-        user.approval_status = 'rejected'
-        user.is_approved = False
-        user.rejected_at = timezone.now()
-        user.save()
+    rejected_at = timezone.now()
+    
+    # Use PyMongo for update
+    pymongo_update(CustomUser, {'id': user.id}, 
+                   approval_status='rejected',
+                   is_approved=False,
+                   rejected_at=rejected_at)
+    
+    # Update in-memory object
+    user.approval_status = 'rejected'
+    user.is_approved = False
+    user.rejected_at = rejected_at
     
     logger.info("User %s rejected by %s", user.email, request.user.email)
     
@@ -884,16 +951,14 @@ def update_user_specialisations(request, user_id):
     try:
         specialisation_ids = request.POST.getlist('specialisations')
         
-        # Clear existing specialisations
-        user.specialisations.clear()
-        
-        # Add new specialisations
-        if specialisation_ids:
-            from superadminpanel.models import SpecialisationMaster
-            specialisations = _filter_not_deleted(
-                SpecialisationMaster.objects.filter(id__in=specialisation_ids)
-            )
-            user.specialisations.set(specialisations)
+        # Use PyMongo for M2M update to bypass broken Djongo ORM
+        pymongo_update_m2m(
+            instance_id=user.id,
+            join_table='custom_users_specialisations',
+            source_field='customuser_id',
+            target_field='specialisationmaster_id',
+            related_ids=specialisation_ids
+        )
         
         logger.info("User %s specialisations updated by %s",
                     user.email, request.user.email)

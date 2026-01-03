@@ -325,7 +325,7 @@
                         <td>{{ writer.department|default:"—" }}</td>
                         <td>{{ writer.level|default:"—" }}</td>
                         <td>
-                            {% with specs=writer.specialisations.all %}
+                            {% with specs=writer.pymongo_specialisations %}
                             {% if specs %}{{ specs|join:", " }}{% else %}—{% endif %}
                             {% endwith %}
                         </td>

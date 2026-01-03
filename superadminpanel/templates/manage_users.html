@@ -1,4 +1,4 @@
-﻿<!-- manage_users.html -->
+<!-- manage_users.html -->
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}Manage Users - SuperAdmin{% endblock %}
@@ -135,7 +135,8 @@
                                             Non-IT
                                         </option>
                                         <option value="Finance" {% if user.department == 'Finance' %}selected{% endif %}>
-                                            Finance</option>
+                                            Finance
+                                        </option>
                                     </select>
                                 </form>
                             </div>
@@ -149,7 +150,7 @@
                                 <!-- Manage Button -->
                                 <div class="specialisation-manage-btn-wrapper">
                                     <button type="button" class="btn btn-primary btn-sm"
-                                        onclick="openSpecialisationModal({{ user.id }}, '{{ user.get_full_name }}', [{% for spec in user.specialisations.all %}'{{ spec.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
+                                        onclick="openSpecialisationModal('{{ user.id }}', '{{ user.get_full_name|escapejs }}', [{% for spec in user.pymongo_specialisations %}{{ spec.id }}{% if not forloop.last %}, {% endif %}{% endfor %}])">
 
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                                             <path
@@ -163,7 +164,7 @@
 
                                 <!-- Tags -->
                                 <div class="specialisation-tags">
-                                    {% for spec in user.specialisations.all %}
+                                    {% for spec in user.pymongo_specialisations %}
                                     <span class="status-tag">
                                         {{ spec.specialisation_name }}
                                     </span>
@@ -203,8 +204,7 @@
                                     onchange="this.form.submit()">
                                     <option value="">Select</option>
                                     {% for org in all_organisations %}
-                                    <option value="{{ org.organisation_name }}"
-                                        {% if user.organisation and user.organisation.id == org.id %}selected{% endif %}>
+                                    <option value="{{ org.organisation_name }}" {% if user.organisation_id == org.id                     %}selected{% endif %}>
                                         {{ org.organisation_name }}
                                     </option>
                                     {% endfor %}
@@ -242,10 +242,18 @@
                             </form>
                         </td>
 
+                        <!-- Assign Organisation -->
+                        <td>
+                            <button type="button" class="btn btn-sm btn-info"
+                                onclick="openOrganisationModal('{{ user.id }}', '{{ user.get_full_name|escapejs }}', '{{ user.organisation_id|default:'' }}')">
+                                Assign Org
+                            </button>
+                        </td>
+
                         <!-- Generate Password -->
                         <td>
                             <button type="button" class="btn btn-primary btn-sm"
-                                onclick="openChangePasswordModal({{ user.id }}, '{{ user.get_full_name }}', '{{ user.email }}')">
+                                onclick="openChangePasswordModal('{{ user.id }}', '{{ user.get_full_name|escapejs }}', '{{ user.email|escapejs }}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor"

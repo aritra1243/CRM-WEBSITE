@@ -250,11 +250,13 @@
             }
         });
 
-        // Username Validation (alphanumeric only)
-        const username = document.getElementById('username');
-        username.addEventListener('input', function() {
-            this.value = this.value.replace(/[^a-zA-Z0-9]/g, '');
-        });
+        // Full Name validation (letters and spaces only)
+        const fullName = document.getElementById('full_name');
+        if (fullName) {
+            fullName.addEventListener('input', function() {
+                this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+            });
+        }
 
         // WhatsApp Number Validation (10 digits only)
         const whatsappNumber = document.getElementById('whatsapp_number');

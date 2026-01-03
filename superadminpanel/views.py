@@ -84,19 +84,22 @@ def manage_users(request):
     context = portal_services.get_manage_users_context(performed_by=request.user)
 
     # Add specialisations to context
+    from common.pymongo_utils import pymongo_filter
     try:
-        all_specs = SpecialisationMaster.objects.all().order_by('specialisation_name')
+        # Use PyMongo to bypass broken ORM SQL parsing
+        all_specs = pymongo_filter(SpecialisationMaster, sort=[('specialisation_name', 1)])
         context['all_specialisations'] = _filter_not_deleted(all_specs)
     except Exception as e:
-        logger.exception(f"Error loading specialisations: {str(e)}")
+        logger.exception(f"Error loading specialisations via PyMongo: {str(e)}")
         context['all_specialisations'] = []
     
     # Add organisations to context
     try:
-        all_orgs = OrganisationMaster.objects.all().order_by('organisation_name')
+        # Use PyMongo to bypass broken ORM SQL parsing
+        all_orgs = pymongo_filter(OrganisationMaster, sort=[('organisation_name', 1)])
         context['all_organisations'] = _filter_not_deleted(all_orgs)
     except Exception as e:
-        logger.exception(f"Error loading organisations: {str(e)}")
+        logger.exception(f"Error loading organisations via PyMongo: {str(e)}")
         context['all_organisations'] = []
     
     return render(request, 'manage_users.html', context)
@@ -136,8 +139,8 @@ def update_user_organisation(request, user_id):
             org_name = request.POST.get('organisation', '').strip()
             
             if org_name:
-                # Find organisation by name
-                all_orgs = list(OrganisationMaster.objects.all())
+                # Find organisation by name using PyMongo
+                all_orgs = pymongo_filter(OrganisationMaster)
                 org = next(
                     (o for o in all_orgs 
                      if o.organisation_name == org_name 
@@ -145,15 +148,14 @@ def update_user_organisation(request, user_id):
                     None
                 )
                 if org:
-                    user.organisation_id = org.id
-                    user.save(update_fields=['organisation_id'])
+                    # Use PyMongo for update
+                    pymongo_update(CustomUser, {'id': user.id}, organisation_id=org.id)
                     messages.success(request, f'Organisation updated for {user.get_full_name()}')
                 else:
                     messages.error(request, 'Organisation not found.')
             else:
-                # Clear organisation
-                user.organisation_id = None
-                user.save(update_fields=['organisation_id'])
+                # Clear organisation using PyMongo
+                pymongo_update(CustomUser, {'id': user.id}, organisation_id=None)
                 messages.success(request, f'Organisation cleared for {user.get_full_name()}')
         except CustomUser.DoesNotExist:
             messages.error(request, 'User not found.')
@@ -269,8 +271,10 @@ def master_input(request):
 @superadmin_required
 def holiday_master(request):
     """Holiday Master - List all holidays"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_holidays = list(Holiday.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_holidays = pymongo_filter(Holiday, sort=[('created_at', -1)])
         holidays = [
             holiday for holiday in raw_holidays
             if not getattr(holiday, 'is_deleted', False)
@@ -566,8 +570,10 @@ def delete_holiday(request, holiday_id):
 @superadmin_required
 def price_master(request):
     """Price Master - List all prices"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_prices = list(PriceMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_prices = pymongo_filter(PriceMaster, sort=[('created_at', -1)])
         prices = [
             price for price in raw_prices
             if not getattr(price, 'is_deleted', False)
@@ -787,11 +793,13 @@ def delete_price(request, price_id):
 @superadmin_required
 def referencing_master(request):
     """Referencing Master - List all references"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_references = list(ReferencingMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_references = pymongo_filter(ReferencingMaster, sort=[('created_at', -1)])
         references = [
-            reference for reference in raw_references
-            if not getattr(reference, 'is_deleted', False)
+            ref for ref in raw_references
+            if not getattr(ref, 'is_deleted', False)
         ]
         context = {
             'references': references,
@@ -813,8 +821,10 @@ def referencing_master(request):
 @superadmin_required
 def all_letter_master(request):
     """Letter Master - List all letter templates"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_templates = list(LetterTemplate.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_templates = pymongo_filter(LetterTemplate, sort=[('created_at', -1)])
         templates = [
             t for t in raw_templates
             if not getattr(t, 'is_deleted', False)
@@ -833,10 +843,14 @@ def all_letter_master(request):
 
 @login_required
 @superadmin_required
+@login_required
+@superadmin_required
 def create_letter_template(request):
     """Create a new letter template"""
     if request.method == 'POST':
         try:
+            from common.pymongo_utils import pymongo_filter, get_mongo_db
+            
             letter_type = request.POST.get('letter_type', '').strip()
             template_content = request.POST.get('template_content', '').strip()
             is_trigger = request.POST.get('is_trigger') == 'on'
@@ -845,39 +859,48 @@ def create_letter_template(request):
                 messages.error(request, 'Letter Type and Content are required.')
                 return redirect('superadmin:all_letter_master')
             
-            # Check if this type already exists (active)
-            # Use list() fetch to avoid Djongo complex query issues
-            all_matches = list(LetterTemplate.objects.filter(letter_type=letter_type))
-            existing = next(
-                (t for t in all_matches if not getattr(t, 'is_deleted', False)),
-                None
-            )
+            # Check if this type already exists (active) using PyMongo
+            query = {
+                'letter_type': letter_type,
+                'is_deleted': False
+            }
+            existing = pymongo_filter(LetterTemplate, query=query)
             
             if existing:
-                messages.error(request, f'A template for {existing.get_letter_type_display()} already exists.')
+                # get_letter_type_display might not work on dict/incomplete obj, but let's try or map manually
+                # For simplicity, we just say "A template for this type..."
+                messages.error(request, f'A template for {letter_type} already exists.')
                 return redirect('superadmin:all_letter_master')
             
-            # with transaction.atomic():
-            template = LetterTemplate()
-            template.letter_type = letter_type
-            template.template_content = template_content
-            template.is_trigger = is_trigger
-            template.created_by = request.user
-            template.created_at = timezone.now()
-            template.save()
+            # Use direct MongoDB insertion
+            db = get_mongo_db()
+            collection = db[LetterTemplate._meta.db_table]
+            
+            new_template = {
+                'letter_type': letter_type,
+                'template_content': template_content,
+                'is_trigger': is_trigger,
+                'created_by_id': request.user.id,
+                'created_at': timezone.now(),
+                'updated_at': timezone.now(),
+                'is_deleted': False
+            }
+            
+            result = collection.insert_one(new_template)
+            new_id = result.inserted_id
+            collection.update_one({'_id': new_id}, {'$set': {'id': new_id}})
             
             log_activity_event(
                 'letter_template.created',
                 subject_user=None,
                 performed_by=request.user,
                 metadata={
-                    'template_id': template.id,
                     'letter_type': letter_type,
                 },
             )
             
             logger.info(f"Letter Template '{letter_type}' created successfully")
-            messages.success(request, f'Template for {template.get_letter_type_display()} created successfully!')
+            messages.success(request, f'Template for {letter_type} created successfully!')
             
             return redirect('superadmin:all_letter_master')
             
@@ -891,12 +914,32 @@ def create_letter_template(request):
 
 @login_required
 @superadmin_required
+@login_required
+@superadmin_required
 def edit_letter_template(request, template_id):
     """Update an existing letter template"""
     if request.method != 'POST':
         return redirect('superadmin:all_letter_master')
     
-    template = LetterTemplate.objects.filter(id=template_id, is_deleted=False).first()
+    from common.pymongo_utils import pymongo_filter, get_mongo_db
+    from bson import ObjectId
+
+    # Find using PyMongo
+    try:
+        # Try finding by ObjectId first
+        if isinstance(template_id, str) and len(template_id) == 24:
+             query = {'_id': ObjectId(template_id), 'is_deleted': False}
+        else:
+             query = {'id': template_id, 'is_deleted': False}
+             
+        matches = pymongo_filter(LetterTemplate, query=query)
+        if not matches:
+             query = {'id': str(template_id), 'is_deleted': False}
+             matches = pymongo_filter(LetterTemplate, query=query)
+             
+        template = matches[0] if matches else None
+    except Exception:
+        template = None
     
     if not template:
         messages.error(request, 'Template not found.')
@@ -913,37 +956,44 @@ def edit_letter_template(request, template_id):
         
         # Check duplicate if type changed
         if letter_type != template.letter_type:
-             # Use list() fetch to avoid Djongo complex query issues
-             all_matches = list(LetterTemplate.objects.filter(letter_type=letter_type))
-             existing = next(
-                (t for t in all_matches 
-                 if t.id != template.id and not getattr(t, 'is_deleted', False)),
-                None
-             )
+             query = {
+                'letter_type': letter_type,
+                'id': {'$ne': template.id},
+                'is_deleted': False
+             }
+             existing = pymongo_filter(LetterTemplate, query=query)
              
              if existing:
-                messages.error(request, f'A template for {existing.get_letter_type_display()} already exists.')
+                messages.error(request, f'A template for {letter_type} already exists.')
                 return redirect('superadmin:all_letter_master')
         
-        # with transaction.atomic():
-        template.letter_type = letter_type
-        template.template_content = template_content
-        template.is_trigger = is_trigger
-        template.updated_by = request.user
-        template.updated_at = timezone.now()
-        template.save()
+        # Update via PyMongo
+        db = get_mongo_db()
+        collection = db[LetterTemplate._meta.db_table]
+        
+        update_fields = {
+            'letter_type': letter_type,
+            'template_content': template_content,
+            'is_trigger': is_trigger,
+            'updated_by_id': request.user.id,
+            'updated_at': timezone.now()
+        }
+        
+        if hasattr(template, '_id'):
+            collection.update_one({'_id': template._id}, {'$set': update_fields})
+        else:
+            collection.update_one({'id': template.id}, {'$set': update_fields})
         
         log_activity_event(
             'letter_template.updated',
             subject_user=None,
             performed_by=request.user,
             metadata={
-                'template_id': template.id,
                 'letter_type': letter_type,
             },
         )
         
-        messages.success(request, f'Template for {template.get_letter_type_display()} updated successfully.')
+        messages.success(request, f'Template for {letter_type} updated successfully.')
     
     except Exception as e:
         logger.exception(f"Error updating letter template: {str(e)}")
@@ -954,30 +1004,55 @@ def edit_letter_template(request, template_id):
 
 @login_required
 @superadmin_required
+@login_required
+@superadmin_required
 def delete_letter_template(request, template_id):
     """Permanently delete a letter template"""
     if request.method != 'POST':
         return redirect('superadmin:all_letter_master')
     
-    template = LetterTemplate.objects.filter(id=template_id).first()
+    from common.pymongo_utils import pymongo_filter, get_mongo_db
+    from bson import ObjectId
+    
+    # Find using PyMongo
+    try:
+        if isinstance(template_id, str) and len(template_id) == 24:
+             query = {'_id': ObjectId(template_id)}
+        else:
+             query = {'id': template_id}
+             
+        matches = pymongo_filter(LetterTemplate, query=query)
+        if not matches:
+             query = {'id': str(template_id)}
+             matches = pymongo_filter(LetterTemplate, query=query)
+             
+        template = matches[0] if matches else None
+    except Exception:
+        template = None
     
     if not template:
         messages.error(request, 'Template not found.')
         return redirect('superadmin:all_letter_master')
     
-    type_ref = template.get_letter_type_display()
+    type_ref = getattr(template, 'letter_type', 'Unknown')
     
     try:
-        # with transaction.atomic():
-        template.delete()
+        # Use PyMongo for delete
+        db = get_mongo_db()
+        collection = db[LetterTemplate._meta.db_table]
+        
+        # Soft delete is cleaner
+        if hasattr(template, '_id'):
+            collection.update_one({'_id': template._id}, {'$set': {'is_deleted': True, 'deleted_at': timezone.now()}})
+        else:
+            collection.update_one({'id': template.id}, {'$set': {'is_deleted': True, 'deleted_at': timezone.now()}})
         
         log_activity_event(
             'letter_template.deleted',
             subject_user=None,
             performed_by=request.user,
             metadata={
-                'template_id': template_id,
-                'letter_type': template.letter_type,
+                'letter_type': type_ref,
             },
         )
     
@@ -1643,10 +1718,12 @@ def _find_reference_by_id(reference_id):
 @superadmin_required
 def academic_writing_master(request):
     """Academic Writing Master - List all writing styles"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_writings = list(AcademicWritingMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_writing = pymongo_filter(AcademicWritingMaster, sort=[('created_at', -1)])
         writings = [
-            writing for writing in raw_writings
+            writing for writing in raw_writing
             if not getattr(writing, 'is_deleted', False)
         ]
         context = {
@@ -1850,8 +1927,10 @@ def _find_writing_by_id(writing_id):
 @superadmin_required
 def project_group_master(request):
     """Project Group Master - List all project groups (Djongo-safe)"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_groups = list(ProjectGroupMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_groups = pymongo_filter(ProjectGroupMaster, sort=[('created_at', -1)])
         project_groups = [
             group for group in raw_groups
             if not getattr(group, 'is_deleted', False)
@@ -2305,8 +2384,10 @@ CRM System Team
 @superadmin_required
 def specialisation_master(request):
     """Specialisation Master - List all specialisations"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_specialisations = list(SpecialisationMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_specialisations = pymongo_filter(SpecialisationMaster, sort=[('specialisation_name', 1)])
         specialisations = [
             specialisation for specialisation in raw_specialisations
             if not getattr(specialisation, 'is_deleted', False)
@@ -2566,8 +2647,10 @@ def update_user_specialisations(request, user_id):
 @superadmin_required
 def organisation_master(request):
     """Organisation Master - List all organisations"""
+    from common.pymongo_utils import pymongo_filter
     try:
-        raw_organisations = list(OrganisationMaster.objects.all().order_by('-created_at'))
+        # Use PyMongo to bypass broken ORM SQL parsing
+        raw_organisations = pymongo_filter(OrganisationMaster, sort=[('organisation_name', 1)])
         organisations = [
             org for org in raw_organisations
             if not getattr(org, 'is_deleted', False)
@@ -2595,10 +2678,14 @@ def organisation_master(request):
 
 @login_required
 @superadmin_required
+@login_required
+@superadmin_required
 def create_organisation(request):
     """Create a new organisation"""
     if request.method == 'POST':
         try:
+            from common.pymongo_utils import pymongo_filter, get_mongo_db
+            
             organisation_code = request.POST.get('organisation_code', '').strip()
             organisation_name = request.POST.get('organisation_name', '').strip()
             email = request.POST.get('email', '').strip()
@@ -2611,57 +2698,67 @@ def create_organisation(request):
                 messages.error(request, 'Organisation code and name are required.')
                 return redirect('superadmin:organisation_master')
             
-            # Check for existing organisation with same code
-            all_orgs = list(OrganisationMaster.objects.all())
-            existing = next(
-                (item for item in all_orgs 
-                 if item.organisation_code.lower() == organisation_code.lower() 
-                 and not getattr(item, 'is_deleted', False)),
-                None
-            )
+            # Check for existing organisation using PyMongo
+            existing_query = {
+                'organisation_code': {'$regex': f'^{organisation_code}$', '$options': 'i'},
+                'is_deleted': False
+            }
+            existing = pymongo_filter(OrganisationMaster, query=existing_query)
             
             if existing:
                 messages.error(request, f'Organisation with code "{organisation_code}" already exists.')
                 return redirect('superadmin:organisation_master')
             
-            # Get parent organisation if child type
-            parent_organisation = None
+            # Get parent organisation ID if child type
+            parent_org_id = None
             if org_type == 'child' and parent_org_name:
-                parent_organisation = next(
-                    (org for org in all_orgs 
-                     if org.organisation_name == parent_org_name 
-                     and not getattr(org, 'is_deleted', False)),
-                    None
-                )
-                if not parent_organisation:
+                parent_query = {
+                    'organisation_name': parent_org_name,
+                    'is_deleted': False
+                }
+                parents = pymongo_filter(OrganisationMaster, query=parent_query)
+                if parents:
+                    parent_org_id = parents[0].id
+                else:
                     messages.error(request, 'Selected parent organisation not found.')
                     return redirect('superadmin:organisation_master')
             
-            with transaction.atomic():
-                org = OrganisationMaster()
-                org.organisation_code = organisation_code
-                org.organisation_name = organisation_name
-                org.email = email if email else None
-                org.address = address if address else None
-                org.org_type = org_type
-                org.is_active = is_active
-                if parent_organisation:
-                    org.parent_organisation_id = parent_organisation.id
-                org.created_by = request.user
-                org.save()
-                
-                log_activity_event(
-                    'organisation.created',
-                    subject_user=None,
-                    performed_by=request.user,
-                    metadata={
-                        'organisation_code': organisation_code,
-                        'organisation_name': organisation_name,
-                        'org_type': org_type,
-                    },
-                )
-                
-                messages.success(request, f'Organisation "{organisation_name}" created successfully!')
+            # Use direct MongoDB insertion to bypass ORM problems
+            db = get_mongo_db()
+            collection = db[OrganisationMaster._meta.db_table]
+            
+            new_org = {
+                'organisation_code': organisation_code,
+                'organisation_name': organisation_name,
+                'email': email if email else None,
+                'address': address if address else None,
+                'org_type': org_type,
+                'parent_organisation_id': parent_org_id,
+                'is_active': is_active,
+                'created_by_id': request.user.id,
+                'created_at': timezone.now(),
+                'updated_at': timezone.now(),
+                'is_deleted': False
+            }
+            
+            result = collection.insert_one(new_org)
+            new_org_id = result.inserted_id
+            
+            # Update the ID field to match Django's expectation (often needed for consistency)
+            collection.update_one({'_id': new_org_id}, {'$set': {'id': new_org_id}})
+            
+            log_activity_event(
+                'organisation.created',
+                subject_user=None,
+                performed_by=request.user,
+                metadata={
+                    'organisation_code': organisation_code,
+                    'organisation_name': organisation_name,
+                    'org_type': org_type,
+                },
+            )
+            
+            messages.success(request, f'Organisation "{organisation_name}" created successfully!')
             
             return redirect('superadmin:organisation_master')
             
@@ -2675,18 +2772,35 @@ def create_organisation(request):
 
 @login_required
 @superadmin_required
+@login_required
+@superadmin_required
 def edit_organisation(request, org_id):
     """Update an existing organisation"""
     if request.method != 'POST':
         return redirect('superadmin:organisation_master')
     
-    # Find organisation by ID
-    all_orgs = list(OrganisationMaster.objects.all())
-    org = next(
-        (o for o in all_orgs if str(o.id) == str(org_id) and not getattr(o, 'is_deleted', False)),
-        None
-    )
+    from common.pymongo_utils import pymongo_filter, pymongo_update, get_mongo_db
+    from bson import ObjectId
     
+    # Find organisation by ID using PyMongo
+    try:
+        # Try finding by ObjectId first, usually passed as string
+        if isinstance(org_id, str) and len(org_id) == 24:
+             query = {'_id': ObjectId(org_id), 'is_deleted': False}
+        else:
+             # Fallback for integer IDs if migrated from SQL
+             query = {'id': org_id, 'is_deleted': False}
+             
+        org_matches = pymongo_filter(OrganisationMaster, query=query)
+        if not org_matches:
+             # Try fallback to string ID in 'id' field
+             query = {'id': str(org_id), 'is_deleted': False}
+             org_matches = pymongo_filter(OrganisationMaster, query=query)
+             
+        org = org_matches[0] if org_matches else None
+    except Exception:
+        org = None
+
     if not org:
         messages.error(request, 'Organisation not found.')
         return redirect('superadmin:organisation_master')
@@ -2705,52 +2819,60 @@ def edit_organisation(request, org_id):
             return redirect('superadmin:organisation_master')
         
         # Check for duplicate code (excluding current record)
-        existing = next(
-            (item for item in all_orgs 
-             if item.organisation_code.lower() == organisation_code.lower() 
-             and str(item.id) != str(org.id)
-             and not getattr(item, 'is_deleted', False)),
-            None
-        )
+        # Using PyMongo for check
+        existing_query = {
+            'organisation_code': {'$regex': f'^{organisation_code}$', '$options': 'i'},
+            'id': {'$ne': org.id}, # Exclude current
+            'is_deleted': False
+        }
+        existing = pymongo_filter(OrganisationMaster, query=existing_query)
         
         if existing:
             messages.error(request, f'Organisation with code "{organisation_code}" already exists.')
             return redirect('superadmin:organisation_master')
         
-        # Get parent organisation if child type
-        parent_organisation = None
+        # Get parent organisation ID if child type
+        parent_org_id = None
         if org_type == 'child' and parent_org_name:
-            parent_organisation = next(
-                (o for o in all_orgs 
-                 if o.organisation_name == parent_org_name 
-                 and not getattr(o, 'is_deleted', False)),
-                None
-            )
+            parent_query = {
+                'organisation_name': parent_org_name,
+                'is_deleted': False
+            }
+            parents = pymongo_filter(OrganisationMaster, query=parent_query)
+            if parents:
+                parent_org_id = parents[0].id
         
-        with transaction.atomic():
-            org.organisation_code = organisation_code
-            org.organisation_name = organisation_name
-            org.email = email if email else None
-            org.address = address if address else None
-            org.org_type = org_type
-            org.is_active = is_active
-            if parent_organisation:
-                org.parent_organisation_id = parent_organisation.id
-            else:
-                org.parent_organisation_id = None
-            org.updated_by = request.user
-            org.updated_at = timezone.now()
-            org.save()
+        # Update using direct MongoDB update
+        db = get_mongo_db()
+        collection = db[OrganisationMaster._meta.db_table]
+        
+        update_fields = {
+            'organisation_code': organisation_code,
+            'organisation_name': organisation_name,
+            'email': email if email else None,
+            'address': address if address else None,
+            'org_type': org_type,
+            'parent_organisation_id': parent_org_id,
+            'is_active': is_active,
+            'updated_by_id': request.user.id,
+            'updated_at': timezone.now()
+        }
+        
+        # Update by _id if possible, or id field
+        if hasattr(org, '_id'):
+            collection.update_one({'_id': org._id}, {'$set': update_fields})
+        else:
+            collection.update_one({'id': org.id}, {'$set': update_fields})
             
-            log_activity_event(
-                'organisation.updated',
-                subject_user=None,
-                performed_by=request.user,
-                metadata={
-                    'organisation_code': organisation_code,
-                    'organisation_name': organisation_name,
-                },
-            )
+        log_activity_event(
+            'organisation.updated',
+            subject_user=None,
+            performed_by=request.user,
+            metadata={
+                'organisation_code': organisation_code,
+                'organisation_name': organisation_name,
+            },
+        )
         
         messages.success(request, f'Organisation "{organisation_name}" updated successfully.')
     except Exception as e:
@@ -2767,12 +2889,27 @@ def delete_organisation(request, org_id):
     if request.method != 'POST':
         return redirect('superadmin:organisation_master')
     
-    # Find organisation by ID
-    all_orgs = list(OrganisationMaster.objects.all())
-    org = next(
-        (o for o in all_orgs if str(o.id) == str(org_id) and not getattr(o, 'is_deleted', False)),
-        None
-    )
+    from common.pymongo_utils import pymongo_filter, get_mongo_db
+    from bson import ObjectId
+    
+    # Find organisation by ID using PyMongo
+    try:
+        # Try finding by ObjectId first, usually passed as string
+        if isinstance(org_id, str) and len(org_id) == 24:
+             query = {'_id': ObjectId(org_id), 'is_deleted': False}
+        else:
+             # Fallback for integer IDs if migrated from SQL
+             query = {'id': org_id, 'is_deleted': False}
+             
+        org_matches = pymongo_filter(OrganisationMaster, query=query)
+        if not org_matches:
+             # Try fallback to string ID in 'id' field
+             query = {'id': str(org_id), 'is_deleted': False}
+             org_matches = pymongo_filter(OrganisationMaster, query=query)
+             
+        org = org_matches[0] if org_matches else None
+    except Exception:
+        org = None
     
     if not org:
         messages.error(request, 'Organisation not found.')
@@ -2780,25 +2917,37 @@ def delete_organisation(request, org_id):
     
     org_name = org.organisation_name
     
-    # Check if this is a mother org with children
+    # Check if this is a mother org with children using PyMongo
     if org.org_type == 'mother':
-        children = [o for o in all_orgs if o.parent_organisation_id == org.id and not getattr(o, 'is_deleted', False)]
+        child_query = {'parent_organisation_id': org.id, 'is_deleted': False}
+        children = pymongo_filter(OrganisationMaster, query=child_query)
         if children:
             messages.error(request, f'Cannot delete "{org_name}" because it has {len(children)} child organisation(s).')
             return redirect('superadmin:organisation_master')
     
     try:
-        with transaction.atomic():
-            org.delete()
-            
-            log_activity_event(
-                'organisation.deleted',
-                subject_user=None,
-                performed_by=request.user,
-                metadata={'organisation_name': org_name},
-            )
+        # Hard delete or soft delete using PyMongo
+        # Since logic was "delete()", Djongo might hard-delete if it's not soft-delete model
+        # But this model has is_deleted field, so we soft delete.
         
+        db = get_mongo_db()
+        collection = db[OrganisationMaster._meta.db_table]
+        
+        # Soft Delete
+        if hasattr(org, '_id'):
+            collection.update_one({'_id': org._id}, {'$set': {'is_deleted': True, 'deleted_at': timezone.now()}})
+        else:
+            collection.update_one({'id': org.id}, {'$set': {'is_deleted': True, 'deleted_at': timezone.now()}})
+
+        log_activity_event(
+            'organisation.deleted',
+            subject_user=None,
+            performed_by=request.user,
+            metadata={'organisation_name': org_name},
+        )
+    
         messages.success(request, f'Organisation "{org_name}" deleted successfully.')
+    
     except Exception as e:
         logger.exception(f"Error deleting organisation: {str(e)}")
         messages.error(request, 'An error occurred while deleting the organisation.')
@@ -3400,33 +3549,62 @@ def all_writer_details(request):
     if parsed_to:
         to_dt = timezone.make_aware(datetime.combine(parsed_to, time.max))
 
-    writer_qs = CustomUser.objects.filter(role='writer').prefetch_related('specialisations').order_by('first_name', 'last_name')
+    from common.pymongo_utils import pymongo_filter
+    
+    # Use PyMongo to bypass broken ORM SQL parsing
+    writer_query = {'role': 'writer'}
     if writer_q:
         try:
-            writer_qs = writer_qs.filter(id=writer_q)
+            # Handle both integer and string IDs
+            try:
+                id_val = int(writer_q)
+                writer_query['id'] = id_val
+            except ValueError:
+                writer_query['id'] = writer_q
         except Exception:
-            writer_qs = writer_qs.filter(id__in=[writer_q])
+            pass
+            
     if emp_q:
-        writer_qs = writer_qs.filter(
-            Q(employee_id__icontains=emp_q)
-        )
+        writer_query['employee_id'] = {'$regex': emp_q, '$options': 'i'}
 
-    writers = list(writer_qs)
+    # Fetch writers
+    writers = pymongo_filter(
+        CustomUser, 
+        query=writer_query, 
+        sort=[('first_name', 1), ('last_name', 1)]
+    )
+    
+    # Prefetch specialisations via PyMongo to avoid ORM join crashes
+    from superadminpanel.models import SpecialisationMaster
+    from common.pymongo_utils import pymongo_prefetch_m2m
+    pymongo_prefetch_m2m(
+        writers,
+        field_name='specialisations',
+        related_model=SpecialisationMaster,
+        join_table='custom_users_specialisations',
+        source_field='customuser_id',
+        target_field='specialisationmaster_id'
+    )
+    
     writer_ids = [w.id for w in writers]
 
-    jobs_qs = Job.objects.filter(allocated_to_id__in=writer_ids).select_related('allocated_to').order_by('-created_at')
+    # Fetch jobs
+    job_query = {'allocated_to_id': {'$in': writer_ids}}
     if from_dt:
-        jobs_qs = jobs_qs.filter(created_at__gte=from_dt)
+        job_query['created_at'] = job_query.get('created_at', {})
+        job_query['created_at']['$gte'] = from_dt
     if to_dt:
-        jobs_qs = jobs_qs.filter(created_at__lte=to_dt)
+        job_query['created_at'] = job_query.get('created_at', {})
+        job_query['created_at']['$lte'] = to_dt
+    
     if job_q:
-        jobs_qs = jobs_qs.filter(
-            Q(system_id__icontains=job_q) |
-            Q(job_id__icontains=job_q) |
-            Q(topic__icontains=job_q)
-        )
+        job_query['$or'] = [
+            {'system_id': {'$regex': job_q, '$options': 'i'}},
+            {'job_id': {'$regex': job_q, '$options': 'i'}},
+            {'topic': {'$regex': job_q, '$options': 'i'}}
+        ]
 
-    jobs = list(jobs_qs)
+    jobs = pymongo_filter(Job, query=job_query, sort=[('created_at', -1)])
     today = timezone.localdate()
     week_start = today - timedelta(days=6)
 
@@ -3506,7 +3684,7 @@ def all_writer_details(request):
         'job_q': job_q,
         'from_date': from_date_raw,
         'to_date': to_date_raw,
-        'writer_choices': CustomUser.objects.filter(role='writer').order_by('first_name', 'last_name'),
+        'writer_choices': writers if not writer_q else pymongo_filter(CustomUser, query={'role': 'writer'}, sort=[('first_name', 1), ('last_name', 1)]),
     }
     return render(request, 'all_writer_details.html', context)
 
@@ -3530,24 +3708,46 @@ def writer_details(request, writer_id):
                 continue
         return None
 
-    writer = get_object_or_404(
-        CustomUser.objects.prefetch_related('specialisations'),
-        id=writer_id,
-        role='writer'
-    )
+    from common.pymongo_utils import pymongo_get, pymongo_filter
+    from django.http import Http404
+
+    # Use PyMongo to bypass broken ORM SQL parsing
+    # Handle both integer and string IDs
+    writer = None
+    try:
+        writer = pymongo_get(CustomUser, id=int(writer_id), role='writer')
+    except (ValueError, TypeError):
+        writer = pymongo_get(CustomUser, id=writer_id, role='writer')
+    
+    if not writer:
+        raise Http404("Writer not found")
 
     parsed_from = _parse_date(from_date_raw)
     parsed_to = _parse_date(to_date_raw)
     from_dt = timezone.make_aware(datetime.combine(parsed_from, time.min)) if parsed_from else None
     to_dt = timezone.make_aware(datetime.combine(parsed_to, time.max)) if parsed_to else None
 
-    jobs_qs = Job.objects.filter(allocated_to=writer).order_by('-created_at')
+    # Fetch jobs via PyMongo
+    job_query = {'allocated_to_id': writer.id}
     if from_dt:
-        jobs_qs = jobs_qs.filter(created_at__gte=from_dt)
+        job_query['created_at'] = job_query.get('created_at', {})
+        job_query['created_at']['$gte'] = from_dt
     if to_dt:
-        jobs_qs = jobs_qs.filter(created_at__lte=to_dt)
+        job_query['created_at'] = job_query.get('created_at', {})
+        job_query['created_at']['$lte'] = to_dt
 
-    jobs = list(jobs_qs)
+    jobs = pymongo_filter(Job, query=job_query, sort=[('created_at', -1)])
+
+    # Prefetch specialisations via PyMongo
+    from superadminpanel.models import SpecialisationMaster
+    pymongo_prefetch_m2m(
+        [writer],
+        field_name='specialisations',
+        related_model=SpecialisationMaster,
+        join_table='custom_users_specialisations',
+        source_field='customuser_id',
+        target_field='specialisationmaster_id'
+    )
     today = timezone.localdate()
     week_start = today - timedelta(days=6)
 

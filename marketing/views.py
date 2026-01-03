@@ -162,11 +162,15 @@ def marketing_dashboard(request):
         'query_jobs': all_jobs.filter(status='query').count(),
     }
     
-    # Get draft jobs (not yet finalized)
-    draft_jobs = all_jobs.filter(status='draft').order_by('-created_at')
+    # Get draft jobs via PyMongo
+    from common.pymongo_utils import pymongo_filter
     
-    # Get recent activities (pending and allocated jobs)
-    recent_activities = all_jobs.exclude(status='draft').order_by('-created_at')[:10]
+    draft_query = {'created_by_id': user.id, 'status': 'draft'}
+    draft_jobs = pymongo_filter(Job, query=draft_query, sort=[('created_at', -1)])
+    
+    # Get recent activities via PyMongo
+    recent_query = {'created_by_id': user.id, 'status': {'$ne': 'draft'}}
+    recent_activities = pymongo_filter(Job, query=recent_query, sort=[('created_at', -1)], limit=10)
     
     context = {
         'user': user,
@@ -371,20 +375,33 @@ def save_initial_form(request):
         if total_after > 10:
             return JsonResponse({'success': False, 'message': 'Maximum 10 attachments allowed including existing and new.'}, status=400)
         
-        logger.info(f"Starting atomic transaction. Total attachments: {total_after}")
-        with transaction.atomic():
+        # logger.info(f"Starting atomic transaction. Total attachments: {total_after}")
+        # with transaction.atomic():
+        # Using PyMongo approach implicitly or just removing atomic to avoid Djongo issues
+        try:
             # Create or update job
             if system_id:
-                job = Job.objects.filter(system_id=system_id, created_by=request.user).order_by('-created_at').first()
+                # job = Job.objects.filter(system_id=system_id, created_by=request.user).order_by('-created_at').first()
+                # Use PyMongo to find to avoid ordering crash
+                from common.pymongo_utils import pymongo_filter
+                job_matches = pymongo_filter(Job, query={'system_id': system_id, 'created_by_id': request.user.id}, sort=[('created_at', -1)], limit=1)
+                job = job_matches[0] if job_matches else None
+                
                 if not job:
                     return JsonResponse({'success': False, 'message': 'Job not found'}, status=404)
+                
+                # Update fields - utilizing standard save which should work if no complex atomic block
                 job.job_id = job_id
                 job.instruction = instruction
                 job.initial_form_last_saved_at = timezone.now()
+                job.save() # Standard save for update is usually safe on single documents
                 
                 # Delete old attachments if replacing
                 if replace_flag:
-                    job.attachments.all().delete()
+                    # job.attachments.all().delete()
+                    # Safe deletion via loop or PyMongo
+                    for att in job.attachments.all():
+                        att.delete()
                 else:
                     if remove_ids:
                         job.attachments.filter(id__in=remove_ids).delete()                
@@ -394,6 +411,8 @@ def save_initial_form(request):
                 # Create new job
                 logger.info(f"Creating new job with job_id={job_id}")
                 system_id = Job.generate_system_id()
+                
+                # Use direct create
                 job = Job.objects.create(
                     system_id=system_id,
                     job_id=job_id,
@@ -436,7 +455,10 @@ def save_initial_form(request):
             )
 
             logger.info("JobActionLog created successfully")
-            logger.info(f"Transaction complete for system_id: {system_id}")
+            logger.info(f"Operation complete for system_id: {system_id}")
+        except Exception as e:
+             logger.error(f"Error during save operation: {e}")
+             raise e
         
         # Log to ActivityLog OUTSIDE atomic transaction (different DB backend)
         try:
